@@ -64,7 +64,7 @@ export default function CompanyCard({ company, featured }: CompanyCardProps) {
 
         <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-50 flex-wrap gap-2">
           <div className="flex items-center gap-3 text-xs text-[var(--slate-blue)]">
-            <span>{company.experience} лет опыта</span>
+            <span>{company.experience > 0 ? `${company.experience} лет опыта` : "Опыт не указан"}</span>
             {company.projectCount && (
               <>
                 <span className="w-1 h-1 rounded-full bg-gray-300" />

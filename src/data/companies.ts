@@ -1,8 +1,9 @@
 import type { ConstructionCompany } from "@/types/company";
+import { scrapedMergedCompanies } from "@/data/scrapedMergedCompanies";
 
 export type { ConstructionCompany, CompanyType, ServiceCategory, PriceRangeTier } from "@/types/company";
 
-export const companies: ConstructionCompany[] = [
+const curatedCompanies: ConstructionCompany[] = [
   {
     id: "ordo-stroy",
     slug: "ordo-stroy",
@@ -271,6 +272,9 @@ export const companies: ConstructionCompany[] = [
     sourceVerified: ["Сайт (пример)", "2gis.kg (пример)"],
   },
 ];
+
+/** Курируемые карточки + выгрузка `scraped/merged-companies.json`. */
+export const companies: ConstructionCompany[] = [...curatedCompanies, ...scrapedMergedCompanies];
 
 export function getCompanyBySlug(slug: string): ConstructionCompany | undefined {
   return companies.find((c) => c.slug === slug);
