@@ -33,15 +33,162 @@ type HouseKgCompany = {
   description: string | null;
 };
 
+type MinstroyLicenseRow = {
+  source: string;
+  registry_level: number;
+  registry_level_label: string;
+  registry_list_url: string;
+  registry_page: number;
+  row_index?: string;
+  series?: string;
+  license_number?: string;
+  issue_date?: string;
+  company_name?: string;
+  director_name?: string;
+  address?: string;
+  inn?: string;
+  commission_decision?: string;
+  license_valid_until?: string;
+  foreign_license_country?: string;
+  registry_entry_date?: string;
+  activity_type?: string;
+  registry_type?: string;
+  violating_authority?: string;
+  appeal_available?: string;
+};
+
 type MergedFile = {
   scrapedAt: string;
   sources: {
     elitka: { builders: ElitkaBuilder[] };
     house_kg: { companies: HouseKgCompany[] };
+    minstroy?: {
+      official_registry_url: string;
+      note_ru: string;
+      licenses: MinstroyLicenseRow[];
+      by_inn: Record<string, unknown>;
+    };
   };
 };
 
 const merged = mergedRaw as MergedFile;
+
+const MINSTROY_OFFICIAL =
+  merged.sources.minstroy?.official_registry_url ?? "https://minstroy.gov.kg/ru/license/reestr";
+
+function normalizeCompanyKey(raw: string): string {
+  let s = raw.toLowerCase().normalize("NFKC");
+  s = s.replace(/&quot;|&laquo;|&raquo;/g, " ");
+  s = s.replace(/["«»„“']/g, " ");
+  s = s.replace(/\b(осоо|ооо|ooo|тоо|ип|ао|зао|чп|кх|к\s*о\s*о)\b/gi, " ");
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
+
+/** Варианты строки для сопоставления с реестром (название из каталога). */
+function companyNameLookupKeys(name: string): string[] {
+  const keys = new Set<string>();
+  const add = (t: string) => {
+    const k = normalizeCompanyKey(t);
+    if (k.length >= 4) keys.add(k);
+  };
+  add(name);
+  const paren = name.match(/\(([^)]+)\)/);
+  if (paren?.[1]) add(paren[1]);
+  for (const m of name.matchAll(/"([^"]+)"|«([^»]+)»/g)) {
+    add(m[1] || m[2] || "");
+  }
+  const parts = name.split(/[/|]/);
+  if (parts.length > 1) parts.forEach((p) => add(p));
+  return [...keys];
+}
+
+function rowSignature(r: MinstroyLicenseRow): string {
+  return `${r.registry_level}|${r.inn ?? ""}|${r.license_number ?? ""}|${r.issue_date ?? ""}|${r.company_name ?? ""}`;
+}
+
+function buildMinstroyNameIndex(rows: MinstroyLicenseRow[]): Map<string, MinstroyLicenseRow[]> {
+  const map = new Map<string, MinstroyLicenseRow[]>();
+  for (const row of rows) {
+    const cn = row.company_name;
+    if (!cn) continue;
+    const key = normalizeCompanyKey(cn);
+    if (key.length < 4) continue;
+    const list = map.get(key) ?? [];
+    list.push(row);
+    map.set(key, list);
+  }
+  return map;
+}
+
+/** Сопоставление названия компании со строками реестра Минстроя (точное и по подстроке). */
+function findMinstroyRowsForName(name: string, index: Map<string, MinstroyLicenseRow[]>): MinstroyLicenseRow[] {
+  const tryKeys = companyNameLookupKeys(name);
+  const seen = new Set<string>();
+  const out: MinstroyLicenseRow[] = [];
+  const pushAll = (rows: MinstroyLicenseRow[] | undefined) => {
+    if (!rows) return;
+    for (const r of rows) {
+      const sig = rowSignature(r);
+      if (seen.has(sig)) continue;
+      seen.add(sig);
+      out.push(r);
+    }
+  };
+  for (const k of tryKeys) {
+    pushAll(index.get(k));
+  }
+  const SUBSTR_MIN = 10;
+  for (const k of tryKeys) {
+    if (k.length < SUBSTR_MIN) continue;
+    for (const [ik, rows] of index) {
+      if (ik === k) continue;
+      if (ik.includes(k) || k.includes(ik)) pushAll(rows);
+    }
+  }
+  return out;
+}
+
+function formatMinstroyRowBrief(r: MinstroyLicenseRow): string {
+  if (r.registry_level === 5) {
+    const bits = [r.company_name, r.inn ? `ИНН ${r.inn}` : null, r.foreign_license_country, r.registry_entry_date].filter(Boolean);
+    return `Иностранный реестр: ${bits.join(", ")}`;
+  }
+  if (r.registry_level === 6) {
+    return [r.company_name, r.issue_date, r.commission_decision].filter(Boolean).join(" — ");
+  }
+  const num = [r.series, r.license_number].filter(Boolean).join(" №");
+  const bits = [num || null, r.issue_date ? `от ${r.issue_date}` : null, r.inn ? `ИНН ${r.inn}` : null].filter(Boolean);
+  return `${r.registry_level_label}: ${bits.join(", ")}`;
+}
+
+function minstroyNotesForMatches(rows: MinstroyLicenseRow[]): {
+  hasPositiveRegistry: boolean;
+  hasBlacklist: boolean;
+  lines: string[];
+} {
+  const blacklist = rows.filter((r) => r.registry_level === 6);
+  const positive = rows.filter((r) => r.registry_level >= 1 && r.registry_level <= 5);
+  const lines: string[] = [];
+  if (positive.length) {
+    lines.push("Реестр лицензий Минстроя КР (по совпадению названия):");
+    positive.slice(0, 5).forEach((r) => lines.push(`• ${formatMinstroyRowBrief(r)}`));
+    if (positive.length > 5) lines.push(`… всего совпадений: ${positive.length}`);
+    lines.push(`Проверить официально: ${MINSTROY_OFFICIAL}`);
+  }
+  if (blacklist.length) {
+    lines.push("Внимание: в открытом «Чёрном списке» реестра Минстроя есть записи с похожим наименованием — уточняйте статус на сайте ведомства.");
+    blacklist.slice(0, 3).forEach((r) => lines.push(`• ${formatMinstroyRowBrief(r)}`));
+  }
+  return {
+    hasPositiveRegistry: positive.length > 0,
+    hasBlacklist: blacklist.length > 0,
+    lines,
+  };
+}
+
+const minstroyRows: MinstroyLicenseRow[] = merged.sources.minstroy?.licenses ?? [];
+const minstroyNameIndex = minstroyRows.length ? buildMinstroyNameIndex(minstroyRows) : new Map<string, MinstroyLicenseRow[]>();
 
 function parseUsd(s: string): number | null {
   const n = Number.parseFloat(String(s).replace(",", "."));
@@ -116,10 +263,25 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
         : "Цену уточняйте у застройщика";
 
   const hasRegistry = b.objects.some((o) => o.gosstroy_registry && String(o.gosstroy_registry).startsWith("http"));
+  const minRows = findMinstroyRowsForName(b.name, minstroyNameIndex);
+  const minNotes = minRows.length ? minstroyNotesForMatches(minRows) : null;
+  const hasMinstroyPositive = Boolean(minNotes?.hasPositiveRegistry);
+  /** Лицензия: паспорт объекта и/или строка реестра; не ставим «да», если только чёрный список. */
+  const showLicensed =
+    (hasRegistry || hasMinstroyPositive) &&
+    !(minNotes?.hasBlacklist && !hasRegistry && !hasMinstroyPositive);
   const primaryCity =
     b.objects.map((o) => inferCityFromAddress(o.address)).find((c) => c) ?? "Бишкек";
 
   const scrapedDate = merged.scrapedAt ? new Date(merged.scrapedAt).toLocaleDateString("ru-RU") : "";
+
+  const licenseParts: string[] = [];
+  if (hasRegistry) licenseParts.push("Есть ссылки на карточки гос. реестра по объектам (паспорт объекта на minstroy.gov.kg).");
+  if (minNotes?.lines.length) licenseParts.push(minNotes.lines.join("\n"));
+  const licenseInfo = licenseParts.length > 0 ? licenseParts.join("\n\n") : undefined;
+
+  const sources = new Set<string>([b.source]);
+  if (minRows.length) sources.add("minstroy.gov.kg");
 
   return {
     id: `elitka-${b.builderId}-${b.slug}`,
@@ -164,15 +326,24 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
       lng: 74.5698,
     },
     workArea: ["Кыргызстан", primaryCity],
-    hasLicense: hasRegistry,
-    licenseInfo: hasRegistry ? "Есть ссылки на карточки гос. реестра по объектам" : undefined,
+    hasLicense: showLicensed,
+    licenseInfo,
     highlights: [`${b.objects.length} объект(ов)`, "elitka.kg"],
-    sourceVerified: [b.source],
+    sourceVerified: [...sources],
   };
 }
 
 function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
   const scrapedDate = merged.scrapedAt ? new Date(merged.scrapedAt).toLocaleDateString("ru-RU") : "";
+  const minRows = findMinstroyRowsForName(c.name, minstroyNameIndex);
+  const minNotes = minRows.length ? minstroyNotesForMatches(minRows) : null;
+  const hasMinstroyPositive = Boolean(minNotes?.hasPositiveRegistry);
+  const showLicensed = hasMinstroyPositive && !(minNotes?.hasBlacklist && !hasMinstroyPositive);
+  const licenseInfo =
+    minNotes?.lines.length && (hasMinstroyPositive || minNotes.hasBlacklist) ? minNotes.lines.join("\n") : undefined;
+  const sources = new Set<string>([c.source]);
+  if (minRows.length) sources.add("minstroy.gov.kg");
+
   return {
     id: `house-kg-${c.slug}`,
     slug: c.slug,
@@ -198,14 +369,23 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
     },
     location: { city: "Бишкек", lat: 42.8746, lng: 74.5698 },
     workArea: ["Кыргызстан"],
-    hasLicense: false,
+    hasLicense: showLicensed,
+    licenseInfo,
     highlights: ["house.kg"],
-    sourceVerified: [c.source],
+    sourceVerified: [...sources],
   };
 }
 
 const elitkaCompanies = merged.sources.elitka.builders.map(elitkaToCompany);
 const houseKgCompanies = merged.sources.house_kg.companies.map(houseKgToCompany);
 
-/** Все компании из `scraped/merged-companies.json` (elitka + house.kg). */
+/** Все компании из `scraped/merged-companies.json` (elitka + house.kg + сопоставление с реестром Минстроя). */
 export const scrapedMergedCompanies: ConstructionCompany[] = [...elitkaCompanies, ...houseKgCompanies];
+
+/** Сводка по выгрузке реестра лицензий (для подписей «источник» / about). */
+export const minstroyRegistrySummary = {
+  officialUrl: MINSTROY_OFFICIAL,
+  rowCount: minstroyRows.length,
+  uniqueInnInIndex: merged.sources.minstroy?.by_inn ? Object.keys(merged.sources.minstroy.by_inn).length : 0,
+  scrapedAt: merged.scrapedAt,
+};

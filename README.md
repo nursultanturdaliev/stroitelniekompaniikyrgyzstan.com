@@ -44,7 +44,7 @@ npm run deploy
 ## Данные: Elitka, House.kg, 2GIS
 
 - Курируемый каталог на сайте: [`src/data/companies.ts`](src/data/companies.ts)
-- **Сводная выгрузка** (застройщики с Elitka, бизнес-аккаунты House.kg, опционально 2GIS): [`scraped/merged-companies.json`](scraped/merged-companies.json)
+- **Сводная выгрузка** (Elitka, House.kg, **реестр лицензий minstroy.gov.kg** уровни 1–6, опционально 2GIS): [`scraped/merged-companies.json`](scraped/merged-companies.json)
 
 Установка зависимостей для скрапера:
 
@@ -53,7 +53,7 @@ pip3 install -r scripts/requirements-scrape.txt
 npm run scrape:sources
 ```
 
-Параметры: `python3 scripts/scrape-all-sources.py --help` (например `--skip-house`, `--house-delay 0.2`).
+Параметры: `python3 scripts/scrape-all-sources.py --help` (например `--skip-house`, `--skip-minstroy`, `--house-delay 0.2`). Актуальность записей реестра всегда проверяйте на [официальном сайте Минстроя](https://minstroy.gov.kg/ru/license/reestr).
 
 Чтобы подтянуть карточки из **2GIS**, задайте `TWO_GIS_API_KEY` и запустите тот же скрипт — блок `sources["2gis"]` заполнится автоматически.
 

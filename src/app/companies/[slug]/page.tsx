@@ -198,8 +198,9 @@ export default async function CompanyPage({ params }: Props) {
                   </li>
                 )}
                 {company.licenseInfo && (
-                  <li>
-                    <span className="font-medium text-[var(--charcoal)]">Лицензия:</span> {company.licenseInfo}
+                  <li className="whitespace-pre-line">
+                    <span className="font-medium text-[var(--charcoal)]">Лицензия и реестры:</span>{" "}
+                    {company.licenseInfo}
                   </li>
                 )}
                 <li>
