@@ -53,7 +53,7 @@ pip3 install -r scripts/requirements-scrape.txt
 npm run scrape:sources
 ```
 
-Параметры: `python3 scripts/scrape-all-sources.py --help` (например `--skip-house`, `--skip-minstroy`, `--house-delay 0.2`). Актуальность записей реестра всегда проверяйте на [официальном сайте Минстроя](https://minstroy.gov.kg/ru/license/reestr).
+Параметры: `python3 scripts/scrape-all-sources.py --help` (например `--skip-house`, `--skip-minstroy`, `--skip-elitka-details`, `--elitka-max-pages 2` для быстрого теста, `--house-delay 0.2`). По умолчанию для каждого объекта Elitka вызывается `GET /api/objects/{id}` (ИНН застройщика, координаты, квартирография, документы) с повторами при 429/5xx. Актуальность записей реестра проверяйте на [сайте Минстроя](https://minstroy.gov.kg/ru/license/reestr).
 
 Чтобы подтянуть карточки из **2GIS**, задайте `TWO_GIS_API_KEY` и запустите тот же скрипт — блок `sources["2gis"]` заполнится автоматически.
 

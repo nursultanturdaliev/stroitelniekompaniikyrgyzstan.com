@@ -12,6 +12,7 @@
   python3 scripts/scrape-all-sources.py
   python3 scripts/scrape-all-sources.py --skip-house   # только Элитка + 2GIS
   python3 scripts/scrape-all-sources.py --skip-minstroy
+  python3 scripts/scrape-all-sources.py --skip-elitka-details   # без /api/objects/{id}
   python3 scripts/scrape-all-sources.py --house-delay 0.4
 """
 
@@ -20,6 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import re
 import sys
 import time
@@ -36,6 +38,7 @@ except ImportError:
     raise
 
 ELITKA_API = "https://elitka.kg/api/objects"
+ELITKA_OBJECT_DETAIL = "https://elitka.kg/api/objects"
 HOUSE_LIST = "https://www.house.kg/business/companies"
 HOUSE_ORIGIN = "https://www.house.kg"
 TWO_GIS_API = "https://catalog.api.2gis.com/3.0/items"
@@ -85,6 +88,95 @@ DEFAULT_2GIS_QUERIES = [
 ]
 
 
+def html_to_text(html: str | None, limit: int = 4000) -> str | None:
+    if not html or not isinstance(html, str):
+        return None
+    t = re.sub(r"(?is)<script[^>]*>.*?</script>", " ", html)
+    t = re.sub(r"(?is)<style[^>]*>.*?</style>", " ", t)
+    t = re.sub(r"<[^>]+>", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t[:limit] if t else None
+
+
+def slim_elitka_builder_profile(bl: dict) -> dict[str, object]:
+    out: dict[str, object] = {
+        "email": (bl.get("email") or "").strip() or None,
+        "phone2": norm_phone(bl.get("phone2")),
+        "phone3": norm_phone(bl.get("phone3")),
+        "office_address": (bl.get("address") or "").strip() or None,
+        "founded_year": bl.get("founded_year"),
+        "instagram": bl.get("instagram"),
+        "site_url": bl.get("site_url"),
+        "inn": str(bl.get("inn")).strip() if bl.get("inn") else None,
+        "legal_name_osoo": bl.get("osoo"),
+        "photo_file": bl.get("photo"),
+        "subscription_plan": bl.get("subscription_plan"),
+        "description_text": html_to_text(bl.get("description"), 2800),
+    }
+    return {k: v for k, v in out.items() if v not in (None, "", [])}
+
+
+def slim_elitka_object_detail(d: dict) -> dict[str, object]:
+    room_keys = (
+        "one_room_flats",
+        "one_room_studio_flats",
+        "two_room_flats",
+        "two_room_studio_flats",
+        "three_room_flats",
+        "three_room_studio_flats",
+        "four_room_flats",
+        "four_room_studio_flats",
+        "five_room_flats",
+        "five_room_studio_flats",
+    )
+    out: dict[str, object] = {
+        "elitka_object_id": d.get("id"),
+        "lat": d.get("lat"),
+        "lon": d.get("lon"),
+        "floor_count": d.get("floor_count"),
+        "entrances_count": d.get("entrances_count"),
+        "object_class": d.get("class"),
+        "total_flats": d.get("total_flats"),
+        "total_area": d.get("total_area"),
+        "land_area": d.get("land_area"),
+        "status": d.get("status"),
+        "construction_start_date": d.get("construction_start_date"),
+        "construction_finish_date": d.get("construction_finish_date"),
+        "initial_construction_finish_date": d.get("initial_construction_finish_date"),
+        "initial_payment": d.get("initial_payment"),
+        "installment_period": d.get("installment_period"),
+        "finish_quarter": d.get("finish_quarter"),
+        "finish_year": d.get("finish_year"),
+        "finish_month": d.get("finish_month"),
+        "heat": d.get("heat"),
+        "construction_technology": d.get("construction_technology"),
+        "wall_material": d.get("wall_material"),
+        "underground_parking": d.get("underground_parking"),
+        "surface_parking": d.get("surface_parking"),
+        "facade": d.get("facade"),
+        "reliability_index": d.get("reliability_index"),
+        "rating": d.get("rating"),
+        "reviews_count": d.get("reviews_count"),
+        "quality_score": d.get("quality_score"),
+        "view_count": d.get("view_count"),
+        "is_promoted": d.get("is_promoted"),
+        "doc_presentation": d.get("doc_presentation"),
+        "doc_state_expertise": d.get("doc_state_expertise"),
+        "doc_master_plan": d.get("doc_master_plan"),
+        "doc_object_passport": d.get("doc_object_passport"),
+        "gosstroy_registry": d.get("gosstroy_registry"),
+        "labels": d.get("labels"),
+        "images": d.get("images"),
+        "main_img": d.get("main_img"),
+        "description_text": html_to_text(d.get("description"), 4500),
+    }
+    for k in room_keys:
+        v = d.get(k)
+        if v is not None and v != 0:
+            out[k] = v
+    return {k: v for k, v in out.items() if v not in (None, "", [])}
+
+
 def norm_phone(s: str | None) -> str | None:
     if not s:
         return None
@@ -102,7 +194,12 @@ def norm_phone(s: str | None) -> str | None:
     return s.strip()
 
 
-def fetch_elitka(cities: list[int], page_size: int, session: requests.Session) -> tuple[list[dict], dict[int, dict]]:
+def fetch_elitka(
+    cities: list[int],
+    page_size: int,
+    session: requests.Session,
+    max_pages: int = 0,
+) -> tuple[list[dict], dict[int, dict]]:
     """Возвращает сырые объекты и агрегированных застройщиков по builder.id."""
     builders: dict[int, dict] = {}
     raw_objects: list[dict] = []
@@ -136,6 +233,7 @@ def fetch_elitka(cities: list[int], page_size: int, session: requests.Session) -
                     }
                 builders[bid]["objects"].append(
                     {
+                        "id": it.get("id"),
                         "title": it.get("title"),
                         "slug": it.get("slug"),
                         "address": it.get("address"),
@@ -143,15 +241,127 @@ def fetch_elitka(cities: list[int], page_size: int, session: requests.Session) -
                         "price_kgs_m2": it.get("price_kgs"),
                         "gosstroy_registry": it.get("gosstroy_registry"),
                         "finish": it.get("construction_finish_date"),
+                        "main_img": it.get("main_img"),
+                        "rating": it.get("rating"),
+                        "reviews_count": it.get("reviews_count"),
                     }
                 )
             total_pages = int(data.get("totalPages") or 0)
+            if max_pages > 0 and page >= max_pages:
+                break
             if page >= total_pages or not items:
                 break
             page += 1
             time.sleep(0.15)
 
     return raw_objects, builders
+
+
+def _fetch_elitka_object_detail_once(session: requests.Session, oid: int) -> tuple[dict | None, str]:
+    """Возвращает (data, reason). reason: ok | not_found | retry | bad."""
+    try:
+        r = session.get(f"{ELITKA_OBJECT_DETAIL}/{oid}", timeout=45)
+    except requests.RequestException:
+        return None, "retry"
+    if r.status_code == 404:
+        return None, "not_found"
+    if r.status_code == 429 or r.status_code >= 500:
+        return None, "retry"
+    if r.status_code != 200:
+        return None, "bad"
+    try:
+        data = r.json()
+    except json.JSONDecodeError:
+        return None, "retry"
+    if not isinstance(data, dict):
+        return None, "bad"
+    if data.get("message") == "OBJECT_NOT_FOUND" or data.get("statusCode") == 404:
+        return None, "not_found"
+    if data.get("statusCode"):
+        return None, "bad"
+    return data, "ok"
+
+
+def enrich_elitka_object_details(
+    session: requests.Session,
+    builders: dict[int, dict],
+    raw_objects: list[dict],
+    delay: float,
+) -> tuple[int, int, int]:
+    """GET /api/objects/{id} — полные карточки (ИНН застройщика, координаты, документы, квартирография).
+
+    Возвращает (ok_count, not_found_count, error_count).
+    """
+    ids_ordered: list[int] = []
+    seen: set[int] = set()
+    for it in raw_objects:
+        oid = it.get("id")
+        if isinstance(oid, int) and oid not in seen:
+            seen.add(oid)
+            ids_ordered.append(oid)
+    if not ids_ordered:
+        return 0, 0, 0
+    print(f"Elitka.kg: детализация /api/objects/{{id}} — {len(ids_ordered)} запросов…", file=sys.stderr)
+    details_by_id: dict[int, dict] = {}
+    ok = not_found = err = 0
+    for i, oid in enumerate(ids_ordered):
+        data: dict | None = None
+        last_reason = "bad"
+        for attempt in range(5):
+            chunk, reason = _fetch_elitka_object_detail_once(session, oid)
+            last_reason = reason
+            if reason == "ok" and chunk:
+                data = chunk
+                break
+            if reason == "not_found":
+                break
+            if reason == "retry":
+                time.sleep(min(8.0, 0.4 * (2**attempt)) + random.random() * 0.2)
+                continue
+            break
+        if data is not None:
+            details_by_id[oid] = data
+            ok += 1
+        elif last_reason == "not_found":
+            not_found += 1
+        else:
+            err += 1
+        if delay > 0:
+            time.sleep(delay + random.random() * 0.05)
+        if (i + 1) % 100 == 0:
+            print(f"  elitka detail: {i + 1}/{len(ids_ordered)}", file=sys.stderr)
+            sys.stderr.flush()
+
+    profiles: dict[int, dict[str, object]] = {}
+    for _oid, d in details_by_id.items():
+        bl = d.get("builder") or {}
+        bid = bl.get("id")
+        if bid is None:
+            continue
+        prof = slim_elitka_builder_profile(bl)
+        cur = profiles.setdefault(int(bid), {})
+        for k, v in prof.items():
+            if v and not cur.get(k):
+                cur[k] = v
+            elif k == "inn" and v:
+                cur[k] = v
+
+    for bid, b in builders.items():
+        if bid in profiles:
+            b["builder_detail"] = profiles[bid]
+
+    for b in builders.values():
+        for obj in b.get("objects", []):
+            oid = obj.get("id")
+            if oid not in details_by_id:
+                continue
+            slab = slim_elitka_object_detail(details_by_id[oid])
+            obj["detail"] = slab
+            gs = slab.get("gosstroy_registry")
+            if isinstance(gs, str) and gs.startswith("http"):
+                obj["gosstroy_registry"] = gs
+
+    return ok, not_found, err
 
 
 def house_list_slugs(session: requests.Session) -> list[str]:
@@ -221,20 +431,104 @@ def parse_house_company(html: str, slug: str) -> dict:
                 break
 
     desc = None
-    intro = soup.select_one(".business-description, .company-description, .business-about")
+    intro = soup.select_one(".b-description .desc, .business-description, .company-description, .business-about")
     if intro:
-        desc = intro.get_text(" ", strip=True)[:2000]
+        desc = intro.get_text(" ", strip=True)[:4000]
+
+    logo_url = None
+    logo_div = soup.select_one(".main-content.business-profile .left .logo")
+    if logo_div and logo_div.get("style"):
+        m = re.search(r"url\(\s*['\"]?([^'\")\s]+)", logo_div.get("style", ""))
+        if m:
+            logo_url = m.group(1).strip()
+
+    banner_url = None
+    banner_el = soup.select_one(".b-banner-top")
+    if banner_el and banner_el.get("style"):
+        m = re.search(r"url\(\s*['\"]?([^'\")\s]+)", banner_el.get("style", ""))
+        if m:
+            banner_url = m.group(1).strip()
+
+    verified_realtor_assoc = bool(soup.select_one(".verified-label .v-label"))
+
+    rating = None
+    score_el = soup.select_one(".rating-block.details-business .rating.score span")
+    if score_el:
+        try:
+            rating = float(score_el.get_text(strip=True).replace(",", "."))
+        except ValueError:
+            pass
+
+    review_count = None
+    rate_a = soup.select_one(".rating-block.details-business .rating.rate-count a")
+    if rate_a:
+        m = re.search(r"(\d+)", rate_a.get_text())
+        if m:
+            review_count = int(m.group(1))
+
+    physical_address = None
+    adr = soup.select_one(".business-contact .bc-value.adr")
+    if adr:
+        physical_address = adr.get_text(" ", strip=True)
+
+    work_hours_text = None
+    sched = soup.select_one(".business-contact .toggle-gr.opened .bc-value table")
+    if sched:
+        work_hours_text = re.sub(r"\s+", " ", sched.get_text(" ", strip=True))[:800]
+
+    listing_tab_labels: list[str] = []
+    for a in soup.select(".content-tabs-block a"):
+        t = a.get_text(" ", strip=True)
+        if t:
+            listing_tab_labels.append(t)
+
+    filter_listing_count = None
+    btn = soup.select_one('input.show-filter-results[value*="объявлен"]')
+    if btn and btn.get("value"):
+        m = re.search(r"\((\d+)\)", btn["value"])
+        if m:
+            filter_listing_count = int(m.group(1))
+
+    social: dict[str, str] = {}
+    for a in soup.select("a.social-link-builder-details[href]"):
+        href = (a.get("href") or "").strip()
+        if not href.startswith("/"):
+            continue
+        if "/facebook" in href:
+            social["facebook"] = f"{HOUSE_ORIGIN}{href}"
+        elif "/instagram" in href:
+            social["instagram"] = f"{HOUSE_ORIGIN}{href}"
+        elif "/telegram" in href:
+            social["telegram"] = f"{HOUSE_ORIGIN}{href}"
+        elif "/whatsapp" in href or "/wa" in href:
+            social["whatsapp_contact"] = f"{HOUSE_ORIGIN}{href}"
+
+    product_tier = None
+    tier_el = soup.select_one(".b-product-name")
+    if tier_el:
+        product_tier = tier_el.get_text(" ", strip=True) or None
 
     return {
         "source": "house.kg",
         "slug": slug,
         "name": title,
         "url": f"{HOUSE_ORIGIN}/{slug}",
-        "phones": phones[:5],
+        "phones": phones[:8],
         "phone": phones[0] if phones else None,
         "website": website,
         "email": email,
         "description": desc,
+        "logo_url": logo_url,
+        "banner_url": banner_url,
+        "verified_realtor_assoc": verified_realtor_assoc,
+        "rating": rating,
+        "review_count": review_count,
+        "physical_address": physical_address,
+        "work_hours_text": work_hours_text,
+        "listing_tab_labels": listing_tab_labels or None,
+        "filter_listing_count": filter_listing_count,
+        "social": social or None,
+        "product_tier": product_tier,
     }
 
 
@@ -273,7 +567,10 @@ def fetch_2gis_multi(
                     "region_id": region_id,
                     "page": page,
                     "page_size": page_size,
-                    "fields": "items.point,items.rubrics,items.schedule,items.contact_groups,items.reviews",
+                    "fields": (
+                        "items.point,items.rubrics,items.schedule,items.contact_groups,items.reviews,"
+                        "items.org,items.links"
+                    ),
                     "key": api_key,
                 }
             )
@@ -301,8 +598,15 @@ def fetch_2gis_multi(
                             phones.append(c["value"])
                 reviews = raw.get("reviews") or {}
                 rating = None
+                review_count = None
                 if isinstance(reviews, dict):
                     rating = reviews.get("general_rating") or reviews.get("rating")
+                    review_count = reviews.get("general_review_count") or reviews.get("org_review_count")
+                rubric_names: list[str] = []
+                for rub in raw.get("rubrics") or []:
+                    if isinstance(rub, dict) and rub.get("name"):
+                        rubric_names.append(str(rub["name"]))
+                org = raw.get("org") if isinstance(raw.get("org"), dict) else {}
                 items.append(
                     {
                         "source": "2gis.kg",
@@ -310,11 +614,17 @@ def fetch_2gis_multi(
                         "address": raw.get("address_name") or raw.get("full_name"),
                         "lat": point.get("lat"),
                         "lng": point.get("lon"),
-                        "phones": phones[:5],
+                        "phones": phones[:8],
                         "phone": norm_phone(phones[0]) if phones else None,
                         "twogisUrl": f"https://2gis.kg/bishkek/firm/{firm_id}" if firm_id else None,
                         "rawId": firm_id or None,
                         "rating": rating,
+                        "review_count": review_count,
+                        "rubrics": rubric_names[:12] or None,
+                        "org_name": org.get("name"),
+                        "org_inn": org.get("inn"),
+                        "schedule": raw.get("schedule"),
+                        "links": raw.get("links"),
                         "query": q,
                     }
                 )
@@ -444,6 +754,18 @@ def main() -> int:
     ap.add_argument("--skip-elitka", action="store_true")
     ap.add_argument("--elitka-cities", default="1,2", help="city ids: 1=Бишкек, 2=Ош")
     ap.add_argument("--elitka-page-size", type=int, default=100)
+    ap.add_argument(
+        "--elitka-max-pages",
+        type=int,
+        default=0,
+        help="ограничить число страниц списка (0 = все; для тестов)",
+    )
+    ap.add_argument(
+        "--skip-elitka-details",
+        action="store_true",
+        help="не вызывать /api/objects/{id} (меньше полей, быстрее)",
+    )
+    ap.add_argument("--elitka-detail-delay", type=float, default=0.12, help="пауза между запросами деталей")
     ap.add_argument("--gis-pages", type=int, default=3, help="pages per query for 2GIS")
     ap.add_argument("--gis-page-size", type=int, default=50)
     ap.add_argument("--skip-minstroy", action="store_true")
@@ -476,11 +798,32 @@ def main() -> int:
     gis_records: list[dict] = []
     minstroy_licenses: list[dict] = []
     minstroy_by_inn: dict[str, list[dict]] = {}
+    elitka_detail_ok = 0
+    elitka_detail_not_found = 0
+    elitka_detail_err = 0
 
     if not args.skip_elitka:
         print("Elitka.kg: загрузка объектов…", file=sys.stderr)
-        elitka_raw, elitka_builders = fetch_elitka(cities, args.elitka_page_size, session)
+        elitka_raw, elitka_builders = fetch_elitka(
+            cities,
+            args.elitka_page_size,
+            session,
+            max_pages=args.elitka_max_pages,
+        )
         print(f"  объектов: {len(elitka_raw)}, уникальных застройщиков: {len(elitka_builders)}", file=sys.stderr)
+        if not args.skip_elitka_details and elitka_raw:
+            elitka_detail_ok, elitka_detail_not_found, elitka_detail_err = enrich_elitka_object_details(
+                session,
+                elitka_builders,
+                elitka_raw,
+                args.elitka_detail_delay,
+            )
+            print(
+                f"  детализация объектов: OK {elitka_detail_ok}, нет в API {elitka_detail_not_found}, ошибок {elitka_detail_err}",
+                file=sys.stderr,
+            )
+        elif args.skip_elitka_details:
+            print("Elitka.kg: детализация пропущена (--skip-elitka-details).", file=sys.stderr)
 
     if not args.skip_house:
         print("House.kg: список компаний…", file=sys.stderr)
@@ -536,6 +879,9 @@ def main() -> int:
         "stats": {
             "elitka_objects": len(elitka_raw),
             "elitka_builders": len(elitka_builders),
+            "elitka_object_details_ok": elitka_detail_ok,
+            "elitka_object_details_not_found": elitka_detail_not_found,
+            "elitka_object_details_err": elitka_detail_err,
             "house_kg_companies": len(house_records),
             "2gis_items": len(gis_records),
             "minstroy_license_rows": len(minstroy_licenses),

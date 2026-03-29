@@ -1,7 +1,10 @@
 import type { ConstructionCompany, CompletedProject, PriceRangeTier, ServiceCategory } from "@/types/company";
 import mergedRaw from "../../scraped/merged-companies.json";
 
+type ElitkaObjectDetail = Record<string, unknown>;
+
 type ElitkaObject = {
+  id?: number;
   title: string;
   slug: string;
   address: string;
@@ -9,6 +12,25 @@ type ElitkaObject = {
   price_kgs_m2: string;
   gosstroy_registry: string | null;
   finish: string | null;
+  main_img?: string | null;
+  rating?: number | null;
+  reviews_count?: number | null;
+  detail?: ElitkaObjectDetail;
+};
+
+type ElitkaBuilderDetail = {
+  email?: string;
+  phone2?: string;
+  phone3?: string;
+  office_address?: string;
+  founded_year?: string;
+  instagram?: string;
+  site_url?: string;
+  inn?: string;
+  legal_name_osoo?: string;
+  photo_file?: string;
+  subscription_plan?: string;
+  description_text?: string;
 };
 
 type ElitkaBuilder = {
@@ -19,6 +41,7 @@ type ElitkaBuilder = {
   phone: string;
   whatsapp: string;
   objects: ElitkaObject[];
+  builder_detail?: ElitkaBuilderDetail;
 };
 
 type HouseKgCompany = {
@@ -31,6 +54,17 @@ type HouseKgCompany = {
   website: string | null;
   email: string | null;
   description: string | null;
+  logo_url?: string | null;
+  banner_url?: string | null;
+  verified_realtor_assoc?: boolean;
+  rating?: number | null;
+  review_count?: number | null;
+  physical_address?: string | null;
+  work_hours_text?: string | null;
+  listing_tab_labels?: string[] | null;
+  filter_listing_count?: number | null;
+  social?: Record<string, string> | null;
+  product_tier?: string | null;
 };
 
 type MinstroyLicenseRow = {
@@ -66,12 +100,13 @@ type MergedFile = {
       official_registry_url: string;
       note_ru: string;
       licenses: MinstroyLicenseRow[];
-      by_inn: Record<string, unknown>;
+      /** Компактные записи без поля source (как в выгрузке скрипта). */
+      by_inn: Record<string, Array<Partial<MinstroyLicenseRow> & { registry_level: number }>>;
     };
   };
 };
 
-const merged = mergedRaw as MergedFile;
+const merged = mergedRaw as unknown as MergedFile;
 
 const MINSTROY_OFFICIAL =
   merged.sources.minstroy?.official_registry_url ?? "https://minstroy.gov.kg/ru/license/reestr";
@@ -105,6 +140,28 @@ function companyNameLookupKeys(name: string): string[] {
 
 function rowSignature(r: MinstroyLicenseRow): string {
   return `${r.registry_level}|${r.inn ?? ""}|${r.license_number ?? ""}|${r.issue_date ?? ""}|${r.company_name ?? ""}`;
+}
+
+function minstroyRowsFromInn(inn: string | undefined | null): MinstroyLicenseRow[] {
+  const raw = (inn || "").replace(/\D/g, "");
+  if (raw.length < 10) return [];
+  const rows = merged.sources.minstroy?.by_inn?.[raw] ?? merged.sources.minstroy?.by_inn?.[(inn || "").trim()];
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => ({ ...r, source: "minstroy.gov.kg" }) as MinstroyLicenseRow);
+}
+
+function mergeMinstroyRowLists(...lists: MinstroyLicenseRow[][]): MinstroyLicenseRow[] {
+  const seen = new Set<string>();
+  const out: MinstroyLicenseRow[] = [];
+  for (const list of lists) {
+    for (const r of list) {
+      const k = rowSignature(r);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(r);
+    }
+  }
+  return out;
 }
 
 function buildMinstroyNameIndex(rows: MinstroyLicenseRow[]): Map<string, MinstroyLicenseRow[]> {
@@ -226,8 +283,19 @@ function projectTypeFromTitle(title: string): ServiceCategory {
 
 function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
   const y = o.finish ? new Date(o.finish).getFullYear() : undefined;
-  const reg = o.gosstroy_registry && String(o.gosstroy_registry).startsWith("http");
-  const desc = [o.address.trim(), reg ? `Реестр: ${o.gosstroy_registry}` : null].filter(Boolean).join("\n");
+  const d = o.detail;
+  const regUrl =
+    (d?.gosstroy_registry && String(d.gosstroy_registry).startsWith("http") ? String(d.gosstroy_registry) : null) ||
+    (o.gosstroy_registry && String(o.gosstroy_registry).startsWith("http") ? String(o.gosstroy_registry) : null);
+  const descLines = [o.address.trim(), regUrl ? `Реестр: ${regUrl}` : null];
+  if (d?.object_class) descLines.push(`Класс ЖК: ${String(d.object_class)}`);
+  if (d?.status) descLines.push(`Статус: ${String(d.status)}`);
+  if (d?.total_flats != null) descLines.push(`Квартир: ${String(d.total_flats)}`);
+  if (d?.floor_count) descLines.push(`Этажность: ${String(d.floor_count)}`);
+  if (d?.description_text && String(d.description_text).length > 20) {
+    descLines.push(String(d.description_text).slice(0, 400) + (String(d.description_text).length > 400 ? "…" : ""));
+  }
+  const desc = descLines.filter(Boolean).join("\n");
   const usd = parseUsd(o.price_usd_m2);
   const kgs = parseUsd(o.price_kgs_m2);
   const priceBits = [
@@ -262,8 +330,16 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
         ? `Ориентир по каталогу: от $${Math.round(minU)}/м²`
         : "Цену уточняйте у застройщика";
 
-  const hasRegistry = b.objects.some((o) => o.gosstroy_registry && String(o.gosstroy_registry).startsWith("http"));
-  const minRows = findMinstroyRowsForName(b.name, minstroyNameIndex);
+  const hasRegistry = b.objects.some((o) => {
+    const fromDetail = o.detail?.gosstroy_registry;
+    const u = fromDetail || o.gosstroy_registry;
+    return u != null && String(u).startsWith("http");
+  });
+  const bd = b.builder_detail;
+  const minRows = mergeMinstroyRowLists(
+    findMinstroyRowsForName(b.name, minstroyNameIndex),
+    minstroyRowsFromInn(bd?.inn),
+  );
   const minNotes = minRows.length ? minstroyNotesForMatches(minRows) : null;
   const hasMinstroyPositive = Boolean(minNotes?.hasPositiveRegistry);
   /** Лицензия: паспорт объекта и/или строка реестра; не ставим «да», если только чёрный список. */
@@ -277,11 +353,33 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
 
   const licenseParts: string[] = [];
   if (hasRegistry) licenseParts.push("Есть ссылки на карточки гос. реестра по объектам (паспорт объекта на minstroy.gov.kg).");
+  if (bd?.inn) licenseParts.push(`ИНН из профиля elitka.kg: ${bd.inn} (сверьте с реестром Минстроя).`);
   if (minNotes?.lines.length) licenseParts.push(minNotes.lines.join("\n"));
   const licenseInfo = licenseParts.length > 0 ? licenseParts.join("\n\n") : undefined;
 
   const sources = new Set<string>([b.source]);
   if (minRows.length) sources.add("minstroy.gov.kg");
+
+  const foundedYear = bd?.founded_year ? Number.parseInt(String(bd.founded_year), 10) : undefined;
+  const fy = foundedYear && foundedYear > 1980 && foundedYear <= new Date().getFullYear() ? foundedYear : undefined;
+  const experienceYears = fy ? Math.max(0, new Date().getFullYear() - fy) : 0;
+
+  const withCoords = b.objects.find((o) => {
+    const lat = o.detail?.lat;
+    const lon = o.detail?.lon;
+    return typeof lat === "number" && typeof lon === "number";
+  });
+  const lat =
+    typeof withCoords?.detail?.lat === "number" ? (withCoords.detail.lat as number) : 42.8746;
+  const lng =
+    typeof withCoords?.detail?.lon === "number" ? (withCoords.detail.lon as number) : 74.5698;
+
+  const descHead: string[] = [
+    `Карточка собрана из открытых данных elitka.kg${scrapedDate ? ` (${scrapedDate})` : ""}.`,
+  ];
+  if (bd?.legal_name_osoo) descHead.push(`Юр. наименование (по elitka): ${bd.legal_name_osoo}.`);
+  if (bd?.office_address) descHead.push(`Офис (по elitka): ${bd.office_address}.`);
+  if (bd?.description_text) descHead.push(bd.description_text);
 
   return {
     id: `elitka-${b.builderId}-${b.slug}`,
@@ -293,7 +391,7 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
         ? b.objects[0].title
         : `${b.objects.length} объектов в каталоге новостроек (elitka.kg)`,
     description: [
-      `Карточка собрана из открытых данных elitka.kg${scrapedDate ? ` (${scrapedDate})` : ""}.`,
+      ...descHead,
       "",
       "Объекты в базе:",
       ...b.objects.slice(0, 12).map((o) => `• ${o.title}${o.address ? ` — ${o.address.trim()}` : ""}`),
@@ -312,23 +410,31 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
         price: u ? `от $${Math.round(u)}/м²` : "цена по запросу",
       };
     }),
-    experience: 0,
+    experience: experienceYears,
+    foundedYear: fy,
     projectCount: b.objects.length,
     completedProjects: b.objects.slice(0, 36).map(elitkaObjectToProject),
     contacts: {
-      phone: b.phone || undefined,
+      phone: b.phone || bd?.phone2 || bd?.phone3 || undefined,
       whatsapp: formatWhatsapp(b.whatsapp),
+      email: bd?.email || undefined,
+      website: bd?.site_url || undefined,
+      instagram: bd?.instagram || undefined,
     },
     location: {
       city: primaryCity,
-      address: b.objects[0]?.address?.trim(),
-      lat: 42.8746,
-      lng: 74.5698,
+      address: bd?.office_address || b.objects[0]?.address?.trim(),
+      lat,
+      lng,
     },
     workArea: ["Кыргызстан", primaryCity],
     hasLicense: showLicensed,
     licenseInfo,
-    highlights: [`${b.objects.length} объект(ов)`, "elitka.kg"],
+    highlights: [
+      `${b.objects.length} объект(ов)`,
+      "elitka.kg",
+      ...(bd?.inn ? [`ИНН ${bd.inn}`] : []),
+    ],
     sourceVerified: [...sources],
   };
 }
@@ -344,6 +450,13 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
   const sources = new Set<string>([c.source]);
   if (minRows.length) sources.add("minstroy.gov.kg");
 
+  const ig = c.social?.instagram;
+
+  const highlights: string[] = ["house.kg"];
+  if (c.verified_realtor_assoc) highlights.push("Подтверждение House.kg / ассоциация риелторов");
+  if (c.product_tier) highlights.push(c.product_tier);
+  if (c.filter_listing_count != null) highlights.push(`~${c.filter_listing_count} объявл. в фильтре`);
+
   return {
     id: `house-kg-${c.slug}`,
     slug: c.slug,
@@ -353,6 +466,8 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
     description: [
       `Данные из house.kg${scrapedDate ? ` (выгрузка ${scrapedDate})` : ""}.`,
       c.description?.trim() || "",
+      c.physical_address ? `Адрес офиса: ${c.physical_address}` : "",
+      c.listing_tab_labels?.length ? `Разделы на профиле: ${c.listing_tab_labels.join(", ")}` : "",
       c.url ? `Страница: ${c.url}` : "",
     ]
       .filter(Boolean)
@@ -362,16 +477,27 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
     priceRange: "mid",
     priceNote: "Уточняйте цены на house.kg или у компании",
     experience: 0,
+    rating: c.rating ?? undefined,
+    reviewCount: c.review_count ?? undefined,
     contacts: {
       phone: c.phone || c.phones[0],
       email: c.email || undefined,
       website: c.website || c.url || undefined,
+      instagram: ig,
     },
-    location: { city: "Бишкек", lat: 42.8746, lng: 74.5698 },
+    location: {
+      city: "Бишкек",
+      address: c.physical_address || undefined,
+      lat: 42.8746,
+      lng: 74.5698,
+    },
     workArea: ["Кыргызстан"],
+    workHours: c.work_hours_text || undefined,
     hasLicense: showLicensed,
     licenseInfo,
-    highlights: ["house.kg"],
+    logo: c.logo_url || undefined,
+    coverImage: c.banner_url || undefined,
+    highlights,
     sourceVerified: [...sources],
   };
 }
