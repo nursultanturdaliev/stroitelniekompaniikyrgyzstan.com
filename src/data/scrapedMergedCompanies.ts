@@ -1,4 +1,16 @@
-import type { ConstructionCompany, CompletedProject, PriceRangeTier, ServiceCategory } from "@/types/company";
+import type {
+  CompanyType,
+  ConstructionCompany,
+  CompletedProject,
+  PriceRangeTier,
+  ServiceCategory,
+} from "@/types/company";
+import {
+  elitkaConstructionStatusLabel,
+  formatIsoDateRu,
+  plannedMonthsBetween,
+  scheduleSlipNoteRu,
+} from "@/lib/elitkaSchedule";
 import mergedRaw from "../../scraped/merged-companies.json";
 
 type ElitkaObjectDetail = Record<string, unknown>;
@@ -284,12 +296,22 @@ function projectTypeFromTitle(title: string): ServiceCategory {
 function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
   const y = o.finish ? new Date(o.finish).getFullYear() : undefined;
   const d = o.detail;
+  const startIso =
+    typeof d?.construction_start_date === "string" ? d.construction_start_date : undefined;
+  const finishIso =
+    typeof d?.construction_finish_date === "string"
+      ? d.construction_finish_date
+      : o.finish && String(o.finish).length > 4
+        ? String(o.finish)
+        : undefined;
+  const initialFinishIso =
+    typeof d?.initial_construction_finish_date === "string" ? d.initial_construction_finish_date : undefined;
   const regUrl =
     (d?.gosstroy_registry && String(d.gosstroy_registry).startsWith("http") ? String(d.gosstroy_registry) : null) ||
     (o.gosstroy_registry && String(o.gosstroy_registry).startsWith("http") ? String(o.gosstroy_registry) : null);
-  const descLines = [o.address.trim(), regUrl ? `Реестр: ${regUrl}` : null];
+  const statusRaw = typeof d?.status === "string" ? d.status : undefined;
+  const descLines = [o.address.trim()];
   if (d?.object_class) descLines.push(`Класс ЖК: ${String(d.object_class)}`);
-  if (d?.status) descLines.push(`Статус: ${String(d.status)}`);
   if (d?.total_flats != null) descLines.push(`Квартир: ${String(d.total_flats)}`);
   if (d?.floor_count) descLines.push(`Этажность: ${String(d.floor_count)}`);
   if (d?.description_text && String(d.description_text).length > 20) {
@@ -302,6 +324,7 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     usd ? `от $${Math.round(usd)}/м²` : null,
     kgs ? `от ${Math.round(kgs).toLocaleString("ru-RU")} сом/м²` : null,
   ].filter(Boolean);
+  const oid = typeof o.id === "number" ? o.id : undefined;
   return {
     title: o.title,
     description: desc || "Объект из каталога elitka.kg",
@@ -309,6 +332,18 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     area: priceBits.length ? priceBits.join(" · ") : undefined,
     type: projectTypeFromTitle(o.title),
     year: y && y > 1990 ? y : undefined,
+    key: oid != null ? `elitka-${oid}` : `${o.slug}-${o.title}`.slice(0, 80),
+    elitkaObjectId: oid,
+    elitkaStatusLabel: elitkaConstructionStatusLabel(statusRaw),
+    plannedStartDisplay: formatIsoDateRu(startIso),
+    plannedFinishDisplay: formatIsoDateRu(finishIso),
+    initialPlannedFinishDisplay:
+      initialFinishIso && finishIso && initialFinishIso !== finishIso
+        ? formatIsoDateRu(initialFinishIso)
+        : undefined,
+    plannedDurationMonths: plannedMonthsBetween(startIso, finishIso),
+    scheduleSlipNote: scheduleSlipNoteRu(initialFinishIso, finishIso),
+    passportUrl: regUrl ?? undefined,
   };
 }
 
@@ -316,6 +351,128 @@ function formatWhatsapp(raw: string): string | undefined {
   const d = raw.replace(/\D/g, "");
   if (d.length < 9) return undefined;
   return d.startsWith("996") ? `+${d}` : `+996${d}`;
+}
+
+/** Текст для эвристик: название, описание, вкладки объявлений. */
+function houseKgBlob(c: HouseKgCompany): string {
+  return [c.name, c.description, c.product_tier, ...(c.listing_tab_labels || [])]
+    .filter(Boolean)
+    .join("\n")
+    .toLowerCase()
+    .normalize("NFC");
+}
+
+type HouseKgKind = "agency" | "construction" | "mixed";
+
+/**
+ * Классификация профиля house.kg: риелторы vs строители по описанию и меткам.
+ * Каталог «Компании» на house.kg в основном посредники — при слабых сигналах склоняем к агентству.
+ */
+function classifyHouseKgCompany(c: HouseKgCompany): HouseKgKind {
+  const blob = houseKgBlob(c);
+  let agency = 0;
+  let construction = 0;
+
+  if (c.verified_realtor_assoc) agency += 5;
+  if (c.product_tier && /эксперт/i.test(c.product_tier) && construction < 3) agency += 2;
+
+  const agencyHits: [RegExp, number][] = [
+    [/риелт|риэлтор|риэлт/i, 3],
+    [/агентств[оа]\s+недвижимост/i, 4],
+    [/агентств[оа]\s+по\s+недвижимост/i, 4],
+    [/посреднич/i, 2],
+    [/купля[-\s]?продажа/i, 2],
+    [/аренда[^\n]{0,48}(квартир|жиль|дом|недвижимост)/i, 2],
+    [/продажа[^\n]{0,48}(квартир|домов|участк|недвижимост)/i, 2],
+    [/эксперты?\s+по\s+недвижимост/i, 3],
+    [/юридическ[оео\s]+сопровожден/i, 1.5],
+    [/оформлени[ея]\s+сделок?/i, 1.5],
+    [/коммерческ(?:ая|ой|ую)\s+недвижимост/i, 1],
+    [/вторичн/i, 1.5],
+    [/подбор\s+объект/i, 1.5],
+  ];
+  const buildHits: [RegExp, number][] = [
+    [/застройщик/i, 4],
+    [/генподряд|ген\s*подряд/i, 4],
+    [/строительн(?:ая|ой|ые|ую)\s+компан/i, 4],
+    [/строительн(?:ые|ых)\s+работ/i, 3],
+    [/\bсмр\b|подрядчик/i, 2.5],
+    [/монолит|котлован|бетонн|кирпичн(?:ая|ую)\s+кладк/i, 2],
+    [/ремонт\s+под\s+ключ|отделк[аи]\s+(квартир|помещ)/i, 2],
+    [/проектирова|проектн(?:ая|о)\s+организ/i, 2],
+    [/фундамент|кровел|фасадн/i, 2],
+    [/благоустройств|инженерн(?:ые|ых)\s+сет/i, 1.5],
+  ];
+
+  for (const [re, w] of agencyHits) {
+    if (re.test(blob)) agency += w;
+  }
+  for (const [re, w] of buildHits) {
+    if (re.test(blob)) construction += w;
+  }
+
+  const tabs = (c.listing_tab_labels || []).join(" ");
+  if (/продажа/i.test(tabs) && /аренда/i.test(tabs) && construction < 2) agency += 1.5;
+
+  if (construction >= 4 && construction > agency + 1) return "construction";
+  if (agency >= 4 && agency > construction + 1) return "agency";
+  if (agency >= 3 && construction >= 3) return "mixed";
+  if (agency >= construction) return "agency";
+  return "construction";
+}
+
+function houseKgProfileForKind(kind: HouseKgKind): {
+  type: CompanyType[];
+  services: string[];
+  specializations: ServiceCategory[];
+  defaultTagline: string;
+  categoryNote: string;
+} {
+  if (kind === "construction") {
+    return {
+      type: ["Строительная компания", "Застройщик"],
+      services: ["Строительство и отделка", "Подрядные работы", "Консультации — уточняйте на house.kg"],
+      specializations: ["Многоэтажное строительство", "Строительство домов"],
+      defaultTagline: "Компания в каталоге house.kg — уточните услуги на странице профиля.",
+      categoryNote:
+        "Тип в каталоге: строительный / подрядный профиль (по ключевым словам в описании house.kg). Если это ошибка, ориентируйтесь на сайт компании.",
+    };
+  }
+  if (kind === "mixed") {
+    return {
+      type: ["Агентство недвижимости", "Строительная компания"],
+      services: ["Недвижимость", "Сделки", "Возможны строительные услуги — уточняйте у компании"],
+      specializations: ["Риелторские услуги", "Строительство домов"],
+      defaultTagline: "Компания на house.kg: по тексту сочетаются посреднические и строительные услуги.",
+      categoryNote:
+        "Тип в каталоге: смешанный (и риелторские, и строительные формулировки). Уточняйте у компании основной вид деятельности.",
+    };
+  }
+  return {
+    type: ["Агентство недвижимости"],
+    services: [
+      "Продажа жилой и коммерческой недвижимости",
+      "Аренда",
+      "Подбор объектов",
+      "Сопровождение сделок",
+    ],
+    specializations: ["Риелторские услуги", "Аренда жилья", "Продажа вторичного жилья"],
+    defaultTagline: "Агентство недвижимости / риелторский профиль (по описанию на house.kg).",
+    categoryNote:
+      "Тип в каталоге: агентство недвижимости / риелтор (по тексту профиля и меткам house.kg). Не путать с застройщиком — проверяйте лицензии и договор.",
+  };
+}
+
+/** Редкий случай: в elitka попала карточка без типичных объектов застройщика. */
+function elitkaLooksLikeAgencyOnly(b: ElitkaBuilder): boolean {
+  const titles = b.objects.map((o) => o.title).join(" ");
+  if (/жк|жилой\s+комплекс|новостро|коттедж|жилой\s+дом/i.test(titles)) return false;
+  const blob = [b.name, b.builder_detail?.description_text].filter(Boolean).join("\n").toLowerCase();
+  if (!blob.trim()) return false;
+  return (
+    /риелт|риэлтор|агентств[оа]\s+недвижимост|посреднич/i.test(blob) &&
+    !/строитель|застройщик|смр|подряд/i.test(blob)
+  );
 }
 
 function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
@@ -374,9 +531,28 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
   const lng =
     typeof withCoords?.detail?.lon === "number" ? (withCoords.detail.lon as number) : 74.5698;
 
+  const agencyOnlyElitka = elitkaLooksLikeAgencyOnly(b);
+  const elitkaTypes: CompanyType[] = agencyOnlyElitka
+    ? ["Агентство недвижимости"]
+    : ["Застройщик", "Строительная компания"];
+  const elitkaServices = agencyOnlyElitka
+    ? [
+        "Услуги на рынке недвижимости (по тексту профиля elitka)",
+        "Уточняйте, застройщик это или агентство",
+      ]
+    : ["Новостройки", "Жилые комплексы", "Продажа квартир от застройщика"];
+  const elitkaSpecs: ServiceCategory[] = agencyOnlyElitka
+    ? ["Риелторские услуги", "Продажа вторичного жилья"]
+    : ["Многоэтажное строительство", "Строительство домов"];
+
   const descHead: string[] = [
     `Карточка собрана из открытых данных elitka.kg${scrapedDate ? ` (${scrapedDate})` : ""}.`,
   ];
+  if (agencyOnlyElitka) {
+    descHead.push(
+      "Тип в каталоге: по описанию похоже на агентство недвижимости, а не на застройщика — перепроверьте на сайте компании.",
+    );
+  }
   if (bd?.legal_name_osoo) descHead.push(`Юр. наименование (по elitka): ${bd.legal_name_osoo}.`);
   if (bd?.office_address) descHead.push(`Офис (по elitka): ${bd.office_address}.`);
   if (bd?.description_text) descHead.push(bd.description_text);
@@ -385,9 +561,10 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
     id: `elitka-${b.builderId}-${b.slug}`,
     slug: b.slug,
     name: b.name,
-    type: ["Застройщик", "Строительная компания"],
-    tagline:
-      b.objects.length === 1
+    type: elitkaTypes,
+    tagline: agencyOnlyElitka
+      ? bd?.description_text?.trim().slice(0, 180) || "Профиль в каталоге elitka.kg"
+      : b.objects.length === 1
         ? b.objects[0].title
         : `${b.objects.length} объектов в каталоге новостроек (elitka.kg)`,
     description: [
@@ -399,8 +576,8 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
     ]
       .filter(Boolean)
       .join("\n"),
-    services: ["Новостройки", "Жилые комплексы", "Продажа квартир от застройщика"],
-    specializations: ["Многоэтажное строительство", "Строительство домов"],
+    services: elitkaServices,
+    specializations: elitkaSpecs,
     priceRange: tier,
     priceNote,
     priceDetails: b.objects.slice(0, 6).map((o) => {
@@ -436,6 +613,7 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
       ...(bd?.inn ? [`ИНН ${bd.inn}`] : []),
     ],
     sourceVerified: [...sources],
+    minstroyBlacklistWarning: Boolean(minNotes?.hasBlacklist),
   };
 }
 
@@ -452,18 +630,24 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
 
   const ig = c.social?.instagram;
 
+  const kind = classifyHouseKgCompany(c);
+  const profile = houseKgProfileForKind(kind);
+
   const highlights: string[] = ["house.kg"];
   if (c.verified_realtor_assoc) highlights.push("Подтверждение House.kg / ассоциация риелторов");
   if (c.product_tier) highlights.push(c.product_tier);
   if (c.filter_listing_count != null) highlights.push(`~${c.filter_listing_count} объявл. в фильтре`);
+  highlights.push(profile.type[0]);
 
   return {
     id: `house-kg-${c.slug}`,
     slug: c.slug,
     name: c.name,
-    type: ["Строительная компания", "Застройщик"],
-    tagline: c.description?.trim() || "Компания в каталоге объявлений house.kg",
+    type: profile.type,
+    tagline: c.description?.trim()?.slice(0, 220) || profile.defaultTagline,
     description: [
+      profile.categoryNote,
+      "",
       `Данные из house.kg${scrapedDate ? ` (выгрузка ${scrapedDate})` : ""}.`,
       c.description?.trim() || "",
       c.physical_address ? `Адрес офиса: ${c.physical_address}` : "",
@@ -472,8 +656,8 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
     ]
       .filter(Boolean)
       .join("\n\n"),
-    services: ["Жилое строительство", "Недвижимость"],
-    specializations: ["Многоэтажное строительство", "Строительство домов"],
+    services: profile.services,
+    specializations: profile.specializations,
     priceRange: "mid",
     priceNote: "Уточняйте цены на house.kg или у компании",
     experience: 0,
@@ -499,6 +683,7 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
     coverImage: c.banner_url || undefined,
     highlights,
     sourceVerified: [...sources],
+    minstroyBlacklistWarning: Boolean(minNotes?.hasBlacklist),
   };
 }
 

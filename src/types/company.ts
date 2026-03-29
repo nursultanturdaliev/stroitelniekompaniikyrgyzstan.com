@@ -3,6 +3,7 @@ import type { BusinessContacts } from "@/types/businessContacts";
 export type CompanyType =
   | "Строительная компания"
   | "Застройщик"
+  | "Агентство недвижимости"
   | "Проектная организация"
   | "Ремонтная компания"
   | "Дорожное строительство";
@@ -17,7 +18,10 @@ export type ServiceCategory =
   | "Фасадные работы"
   | "Инженерные сети"
   | "Благоустройство"
-  | "Дорожное строительство";
+  | "Дорожное строительство"
+  | "Риелторские услуги"
+  | "Аренда жилья"
+  | "Продажа вторичного жилья";
 
 export type PriceRangeTier = "budget" | "mid" | "premium" | "luxury";
 
@@ -28,6 +32,18 @@ export interface CompletedProject {
   area?: string;
   type: string;
   year?: number;
+  /** Стабильный ключ для списков (например elitka-{id}) */
+  key?: string;
+  elitkaObjectId?: number;
+  /** Человекочитаемый статус по данным elitka.kg */
+  elitkaStatusLabel?: string;
+  plannedStartDisplay?: string;
+  plannedFinishDisplay?: string;
+  initialPlannedFinishDisplay?: string;
+  plannedDurationMonths?: number;
+  scheduleSlipNote?: string;
+  /** Ссылка на паспорт объекта на сайте Минстроя */
+  passportUrl?: string;
 }
 
 export interface ConstructionCompany {
@@ -54,6 +70,8 @@ export interface ConstructionCompany {
   rating?: number;
   reviewCount?: number;
   hasLicense: boolean;
+  /** Совпадение с чёрным списком (ур. 6) реестра Минстроя по данным автоматического сопоставления — не юридический вывод */
+  minstroyBlacklistWarning?: boolean;
   licenseInfo?: string;
   teamSize?: string;
   highlights: string[];

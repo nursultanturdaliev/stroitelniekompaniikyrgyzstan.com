@@ -41,8 +41,8 @@ export default function Home() {
         <div className="container-custom">
           <SectionTitle
             subtitle="Каталог"
-            title="Строительные компании"
-            description="Проверенные карточки с услугами, лицензиями, ориентирами по ценам и ссылками на отзывы"
+            title="Компании и агентства"
+            description="Застройщики, подрядчики и агентства недвижимости — услуги, лицензии по данным источников, ориентиры по ценам"
           />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featured.map((company, index) => (

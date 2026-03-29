@@ -137,11 +137,12 @@ export default function CompaniesCatalog() {
       <section className="bg-[var(--deep-navy)] py-12 sm:py-16">
         <div className="container-custom">
           <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
-            Строительные компании Кыргызстана
+            Застройщики, подрядчики и агентства Кыргызстана
           </h1>
           <p className="text-white/60 max-w-2xl text-sm sm:text-base mb-6">
-            {stats.total} компаний в каталоге. {stats.licensed} с отметкой о лицензии (по данным карточек). Сравнивайте
-            услуги, сегмент цен и отзывы.
+            {stats.total} компаний в каталоге (в т.ч. риелторы с house.kg и застройщики с elitka.kg). {stats.licensed} с
+            отметкой о лицензии по данным карточек. Фильтр по типу помогает отделить агентства недвижимости от
+            строительных организаций.
           </p>
           <div className="max-w-lg">
             <div className="relative">

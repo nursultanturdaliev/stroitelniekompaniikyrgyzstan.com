@@ -45,6 +45,7 @@ export const defaultCompanyFilters: CompanyFilterState = {
 const allCompanyTypes: CompanyType[] = [
   "Строительная компания",
   "Застройщик",
+  "Агентство недвижимости",
   "Проектная организация",
   "Ремонтная компания",
   "Дорожное строительство",
@@ -61,6 +62,9 @@ const allSpecializations: ServiceCategory[] = [
   "Инженерные сети",
   "Благоустройство",
   "Дорожное строительство",
+  "Риелторские услуги",
+  "Аренда жилья",
+  "Продажа вторичного жилья",
 ];
 
 const priceRanges = [

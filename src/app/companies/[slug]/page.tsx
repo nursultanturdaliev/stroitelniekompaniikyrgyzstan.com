@@ -20,8 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const company = getCompanyBySlug(slug);
   if (!company) return { title: "Компания не найдена" };
+  const primaryType = company.type[0] ?? "Компания";
   return {
-    title: `${company.name} — строительная компания`,
+    title: `${company.name} — ${primaryType.toLowerCase()}`,
     description: company.tagline,
     openGraph: {
       title: company.name,
