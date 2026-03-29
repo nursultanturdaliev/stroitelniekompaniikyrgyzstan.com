@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getElitkaProjectPageData, getElitkaProjectStaticParams } from "@/data/elitkaProjectsFromMerge";
+import ElitkaObjectFactsSection from "@/components/ElitkaObjectFactsSection";
 import PassportSnapshotSection from "@/components/PassportSnapshotSection";
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
@@ -72,6 +73,23 @@ export default async function ElitkaProjectPage({ params }: Props) {
         <p className="text-[var(--slate-blue)] mb-2">{data.address}</p>
         <p className="text-xs text-[var(--steel-blue)] mb-6">{data.projectType}</p>
 
+        {data.galleryImageUrls.length > 0 && (
+          <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-xl overflow-hidden border border-gray-100">
+            {data.galleryImageUrls.map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <a
+                key={`${src}-${i}`}
+                href={src}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block aspect-[4/3] bg-[var(--warm-beige)]"
+              >
+                <img src={src} alt="" className="w-full h-full object-cover hover:opacity-95 transition-opacity" />
+              </a>
+            ))}
+          </div>
+        )}
+
         {data.statusLabel && (
           <p className="text-sm font-medium text-[var(--charcoal)] mb-4">{data.statusLabel}</p>
         )}
@@ -137,6 +155,10 @@ export default async function ElitkaProjectPage({ params }: Props) {
             )}
           </section>
         ) : null}
+
+        {data.elitkaFacts && (
+          <ElitkaObjectFactsSection facts={data.elitkaFacts} objectId={data.elitkaObjectId} />
+        )}
 
         {data.passportSnapshot && (
           <section className="mb-8">

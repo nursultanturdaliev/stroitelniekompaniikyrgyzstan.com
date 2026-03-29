@@ -119,6 +119,104 @@ def slim_elitka_builder_profile(bl: dict) -> dict[str, object]:
     return {k: v for k, v in out.items() if v not in (None, "", [])}
 
 
+def slim_elitka_characteristics(raw: object) -> list[dict[str, str]] | None:
+    if not isinstance(raw, list) or not raw:
+        return None
+    out: list[dict[str, str]] = []
+    for it in raw:
+        if not isinstance(it, dict):
+            continue
+        ch = it.get("characteristic")
+        name = None
+        if isinstance(ch, dict):
+            name = (str(ch.get("name") or "")).strip() or None
+        val = it.get("value")
+        vs = "" if val is None else str(val).strip()
+        if name:
+            out.append({"name": name, "value": vs})
+    return out or None
+
+
+def slim_elitka_subdistrict_names(raw: object) -> list[str] | None:
+    if not isinstance(raw, list) or not raw:
+        return None
+    names: list[str] = []
+    for it in raw:
+        if isinstance(it, dict):
+            n = (str(it.get("name") or "")).strip()
+            if n:
+                names.append(n)
+    return names or None
+
+
+def slim_elitka_other_objects(raw: object) -> list[dict[str, object]] | None:
+    if not isinstance(raw, list) or not raw:
+        return None
+    out: list[dict[str, object]] = []
+    for it in raw[:24]:
+        if not isinstance(it, dict):
+            continue
+        oid = it.get("id")
+        slug = it.get("slug")
+        title = it.get("title")
+        if not isinstance(oid, int) or not isinstance(slug, str) or not isinstance(title, str):
+            continue
+        row: dict[str, object] = {"id": oid, "slug": slug.strip(), "title": title.strip()}
+        ad = it.get("address")
+        if isinstance(ad, str) and ad.strip():
+            row["address"] = ad.strip()
+        gs = it.get("gosstroy_registry")
+        if isinstance(gs, str) and gs.startswith("http"):
+            row["gosstroy_registry"] = gs
+        out.append(row)
+    return out or None
+
+
+def slim_elitka_construction_progress(raw: object) -> list[dict[str, object]] | None:
+    if not isinstance(raw, list) or not raw:
+        return None
+    out: list[dict[str, object]] = []
+    for it in raw[:72]:
+        if not isinstance(it, dict):
+            continue
+        row: dict[str, object] = {}
+        for key in ("date", "title", "percent", "progress", "description", "created_at", "updated_at"):
+            v = it.get(key)
+            if v is not None and v != "":
+                row[key] = v
+        if row:
+            out.append(row)
+    return out or None
+
+
+def slim_elitka_apartments(raw: object) -> list[dict[str, object]] | None:
+    if not isinstance(raw, list) or not raw:
+        return None
+    out: list[dict[str, object]] = []
+    for it in raw[:150]:
+        if not isinstance(it, dict):
+            continue
+        row: dict[str, object] = {}
+        for key in (
+            "id",
+            "floor",
+            "rooms",
+            "area",
+            "living_area",
+            "price_usd",
+            "price_kgs",
+            "title",
+            "status",
+            "number",
+        ):
+            v = it.get(key)
+            if v is not None and v != "":
+                row[key] = v
+        if row:
+            out.append(row)
+    return out or None
+
+
 def slim_elitka_object_detail(d: dict) -> dict[str, object]:
     room_keys = (
         "one_room_flats",
@@ -132,8 +230,14 @@ def slim_elitka_object_detail(d: dict) -> dict[str, object]:
         "five_room_flats",
         "five_room_studio_flats",
     )
+    slug_v = d.get("slug")
     out: dict[str, object] = {
         "elitka_object_id": d.get("id"),
+        "slug": (str(slug_v).strip() if isinstance(slug_v, str) and slug_v.strip() else None),
+        "city_id": d.get("city_id"),
+        "district_id": d.get("district_id"),
+        "blocks_count": d.get("blocks_count"),
+        "ceiling_height": d.get("ceiling_height"),
         "lat": d.get("lat"),
         "lon": d.get("lon"),
         "floor_count": d.get("floor_count"),
@@ -146,6 +250,7 @@ def slim_elitka_object_detail(d: dict) -> dict[str, object]:
         "construction_start_date": d.get("construction_start_date"),
         "construction_finish_date": d.get("construction_finish_date"),
         "initial_construction_finish_date": d.get("initial_construction_finish_date"),
+        "finish_installment_date": d.get("finish_installment_date"),
         "initial_payment": d.get("initial_payment"),
         "installment_period": d.get("installment_period"),
         "finish_quarter": d.get("finish_quarter"),
@@ -162,21 +267,44 @@ def slim_elitka_object_detail(d: dict) -> dict[str, object]:
         "reviews_count": d.get("reviews_count"),
         "quality_score": d.get("quality_score"),
         "view_count": d.get("view_count"),
+        "call_count": d.get("call_count"),
+        "show_count": d.get("show_count"),
         "is_promoted": d.get("is_promoted"),
         "doc_presentation": d.get("doc_presentation"),
         "doc_state_expertise": d.get("doc_state_expertise"),
         "doc_master_plan": d.get("doc_master_plan"),
         "doc_object_passport": d.get("doc_object_passport"),
+        "doc_typical_floor_plan": d.get("doc_typical_floor_plan"),
+        "doc_area": d.get("doc_area"),
         "gosstroy_registry": d.get("gosstroy_registry"),
         "labels": d.get("labels"),
         "images": d.get("images"),
         "main_img": d.get("main_img"),
+        "price_usd": d.get("price_usd"),
+        "price_kgs": d.get("price_kgs"),
+        "created_at": d.get("created_at"),
+        "updated_at": d.get("updated_at"),
         "description_text": html_to_text(d.get("description"), 4500),
     }
     for k in room_keys:
         v = d.get(k)
         if v is not None and v != 0:
             out[k] = v
+    ch = slim_elitka_characteristics(d.get("characteristics"))
+    if ch:
+        out["characteristics"] = ch
+    sn = slim_elitka_subdistrict_names(d.get("subdistricts"))
+    if sn:
+        out["subdistrict_names"] = sn
+    oo = slim_elitka_other_objects(d.get("other_objects"))
+    if oo:
+        out["related_objects"] = oo
+    cp = slim_elitka_construction_progress(d.get("construction_progress"))
+    if cp:
+        out["construction_progress"] = cp
+    apt = slim_elitka_apartments(d.get("apartments"))
+    if apt:
+        out["apartments"] = apt
     return {k: v for k, v in out.items() if v not in (None, "", [])}
 
 

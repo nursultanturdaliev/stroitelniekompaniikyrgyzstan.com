@@ -4,8 +4,10 @@ import {
   plannedMonthsBetween,
   scheduleSlipNoteRu,
 } from "@/lib/elitkaSchedule";
+import { buildElitkaObjectFactsFromDetail } from "@/lib/elitkaObjectFacts";
+import { elitkaObjectImageUrls } from "@/lib/elitkaMedia";
 import { passportEntryForUrl } from "@/lib/minstroyPassportSnapshot";
-import type { CompletedProject, ServiceCategory } from "@/types/company";
+import type { CompletedProject, ElitkaObjectFacts, ServiceCategory } from "@/types/company";
 import mergedRaw from "../../scraped/merged-companies.json";
 
 type ElitkaObjectDetail = Record<string, unknown>;
@@ -19,6 +21,7 @@ type ElitkaObjectJson = {
   price_kgs_m2: string;
   gosstroy_registry: string | null;
   finish: string | null;
+  main_img?: string | null;
   detail?: ElitkaObjectDetail;
 };
 
@@ -48,6 +51,7 @@ export type ElitkaProjectPageData = {
   builderName: string;
   title: string;
   address: string;
+  elitkaObjectId: number;
   lat?: number;
   lng?: number;
   passportUrl?: string;
@@ -59,6 +63,8 @@ export type ElitkaProjectPageData = {
   scheduleSlipNote?: string;
   projectType: ServiceCategory;
   passportSnapshot?: CompletedProject["passportSnapshot"];
+  elitkaFacts?: ElitkaObjectFacts;
+  galleryImageUrls: string[];
 };
 
 function objectToPageData(
@@ -95,6 +101,14 @@ function objectToPageData(
       }
     : undefined;
 
+  const dRecord = d && typeof d === "object" ? (d as Record<string, unknown>) : undefined;
+  const elitkaFacts = buildElitkaObjectFactsFromDetail(dRecord, o.slug);
+  const mainForGallery =
+    (typeof dRecord?.main_img === "string" ? dRecord.main_img : null) ||
+    (typeof o.main_img === "string" ? o.main_img : null) ||
+    undefined;
+  const galleryImageUrls = elitkaObjectImageUrls(oid, mainForGallery, dRecord?.images ?? null, 16);
+
   return {
     projectId: `elitka-${oid}`,
     scrapedAt,
@@ -102,6 +116,7 @@ function objectToPageData(
     builderName: builder.name,
     title: o.title,
     address: o.address.trim(),
+    elitkaObjectId: oid,
     lat,
     lng,
     passportUrl: regUrl ?? undefined,
@@ -114,6 +129,8 @@ function objectToPageData(
     scheduleSlipNote: scheduleSlipNoteRu(initialFinishIso, finishIso),
     projectType: projectTypeFromTitle(o.title),
     passportSnapshot,
+    elitkaFacts,
+    galleryImageUrls,
   };
 }
 

@@ -25,6 +25,83 @@ export type ServiceCategory =
 
 export type PriceRangeTier = "budget" | "mid" | "premium" | "luxury";
 
+/** Плоские факты по объекту из детального ответа elitka.kg (после slim в merged JSON). */
+export interface ElitkaCharacteristicRow {
+  name: string;
+  value: string;
+}
+
+export interface ElitkaRelatedBuildingRef {
+  id: number;
+  slug: string;
+  title: string;
+  address?: string;
+  gosstroy_registry?: string;
+}
+
+export type ElitkaRoomCountKey =
+  | "one_room_flats"
+  | "one_room_studio_flats"
+  | "two_room_flats"
+  | "two_room_studio_flats"
+  | "three_room_flats"
+  | "three_room_studio_flats"
+  | "four_room_flats"
+  | "four_room_studio_flats"
+  | "five_room_flats"
+  | "five_room_studio_flats";
+
+export interface ElitkaObjectFacts {
+  slug?: string;
+  cityId?: number;
+  districtId?: number;
+  subdistrictNames?: string[];
+  blocksCount?: number;
+  ceilingHeight?: string | number;
+  floorCount?: number;
+  entrancesCount?: number;
+  objectClass?: string | number;
+  totalFlats?: number;
+  totalArea?: string | number;
+  landArea?: string | number;
+  heat?: string;
+  constructionTechnology?: string;
+  wallMaterial?: string;
+  facade?: string;
+  undergroundParking?: string | number | boolean;
+  surfaceParking?: string | number | boolean;
+  initialPayment?: string | number;
+  installmentPeriod?: string | number;
+  finishInstallmentDate?: string;
+  finishQuarter?: string | number;
+  finishYear?: number;
+  finishMonth?: number;
+  reliabilityIndex?: string | number;
+  qualityScore?: string | number;
+  rating?: number;
+  reviewsCount?: number;
+  viewCount?: number;
+  callCount?: number;
+  showCount?: number;
+  isPromoted?: boolean;
+  docPresentation?: string;
+  docStateExpertise?: string;
+  docMasterPlan?: string;
+  docObjectPassport?: string;
+  docTypicalFloorPlan?: string;
+  docArea?: string;
+  detailPriceUsd?: string | number;
+  detailPriceKgs?: string | number;
+  createdAt?: string;
+  updatedAt?: string;
+  characteristics?: ElitkaCharacteristicRow[];
+  relatedBuildings?: ElitkaRelatedBuildingRef[];
+  constructionProgress?: Array<Record<string, string | number | null | undefined>>;
+  apartments?: Array<Record<string, string | number | null | undefined>>;
+  roomCounts?: Partial<Record<ElitkaRoomCountKey, number>>;
+  labels?: unknown;
+}
+
 export interface CompletedProject {
   title: string;
   description: string;
@@ -51,6 +128,8 @@ export interface CompletedProject {
     parseError?: string | null;
     fields: Record<string, string>;
   };
+  /** Структурированные поля из детальной карточки elitka.kg (если были в выгрузке). */
+  elitkaFacts?: ElitkaObjectFacts;
 }
 
 export interface ConstructionCompany {

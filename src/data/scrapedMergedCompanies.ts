@@ -11,6 +11,8 @@ import {
   plannedMonthsBetween,
   scheduleSlipNoteRu,
 } from "@/lib/elitkaSchedule";
+import { buildElitkaObjectFactsFromDetail } from "@/lib/elitkaObjectFacts";
+import { elitkaObjectImageUrls } from "@/lib/elitkaMedia";
 import { passportEntryForUrl } from "@/lib/minstroyPassportSnapshot";
 import mergedRaw from "../../scraped/merged-companies.json";
 
@@ -310,6 +312,7 @@ function projectTypeFromTitle(title: string): ServiceCategory {
 function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
   const y = o.finish ? new Date(o.finish).getFullYear() : undefined;
   const d = o.detail;
+  const dRecord = d && typeof d === "object" ? (d as Record<string, unknown>) : undefined;
   const startIso =
     typeof d?.construction_start_date === "string" ? d.construction_start_date : undefined;
   const finishIso =
@@ -351,10 +354,15 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
         fields: passportSnap!.fields || {},
       }
     : undefined;
+  const elitkaFacts = buildElitkaObjectFactsFromDetail(dRecord, o.slug);
+  const mainForGallery =
+    (typeof dRecord?.main_img === "string" ? dRecord.main_img : null) || o.main_img || null;
+  const galleryImages =
+    oid != null ? elitkaObjectImageUrls(oid, mainForGallery, dRecord?.images ?? null) : [];
   return {
     title: o.title,
     description: desc || "Объект из каталога elitka.kg",
-    images: [],
+    images: galleryImages,
     area: priceBits.length ? priceBits.join(" · ") : undefined,
     type: projectTypeFromTitle(o.title),
     year: y && y > 1990 ? y : undefined,
@@ -371,6 +379,7 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     scheduleSlipNote: scheduleSlipNoteRu(initialFinishIso, finishIso),
     passportUrl: regUrl ?? undefined,
     passportSnapshot,
+    elitkaFacts,
   };
 }
 

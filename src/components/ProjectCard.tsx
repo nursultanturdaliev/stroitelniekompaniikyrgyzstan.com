@@ -68,6 +68,41 @@ export default function ProjectCard({ project }: { project: CompletedProject }) 
           </p>
         )}
 
+        {project.elitkaFacts && (
+          <ul className="text-xs text-[var(--slate-blue)] mb-2 space-y-0.5">
+            {project.elitkaFacts.subdistrictNames && project.elitkaFacts.subdistrictNames.length > 0 && (
+              <li>
+                <span className="text-gray-400">Район: </span>
+                {project.elitkaFacts.subdistrictNames.join(", ")}
+              </li>
+            )}
+            {(project.elitkaFacts.floorCount != null || project.elitkaFacts.totalFlats != null) && (
+              <li>
+                {project.elitkaFacts.floorCount != null && (
+                  <>
+                    <span className="text-gray-400">Этажей: </span>
+                    {project.elitkaFacts.floorCount}
+                  </>
+                )}
+                {project.elitkaFacts.floorCount != null && project.elitkaFacts.totalFlats != null && " · "}
+                {project.elitkaFacts.totalFlats != null && (
+                  <>
+                    <span className="text-gray-400">квартир: </span>
+                    {project.elitkaFacts.totalFlats}
+                  </>
+                )}
+              </li>
+            )}
+            {(project.elitkaFacts.constructionTechnology || project.elitkaFacts.wallMaterial) && (
+              <li className="line-clamp-2">
+                {[project.elitkaFacts.constructionTechnology, project.elitkaFacts.wallMaterial]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </li>
+            )}
+          </ul>
+        )}
+
         <p className="text-sm text-[var(--slate-blue)] mb-2 flex-1">{project.description}</p>
 
         <div className="flex flex-wrap gap-2 text-xs text-[var(--slate-blue)] mb-3">
