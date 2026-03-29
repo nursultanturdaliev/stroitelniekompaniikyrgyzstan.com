@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Выгрузка организаций из 2GIS Catalog API (v3) в JSON для последующей ручной курации в companies.ts.
+Выгрузка организаций из 2GIS Catalog API (v3) в JSON.
+
+Для Elitka + House.kg + 2GIS в одном файле используйте scripts/scrape-all-sources.py
 
 Требуется API-ключ: https://docs.2gis.com/api/search/overview
   export TWO_GIS_API_KEY="ваш_ключ"

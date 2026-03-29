@@ -41,17 +41,23 @@ npm run deploy
 
 Или подключите репозиторий к Pages: build command `npm run build`, output `out`. Каталог **`functions/`** в корне подхватывается автоматически.
 
-## Данные и 2GIS
+## Данные: Elitka, House.kg, 2GIS
 
-- Карточки: [`src/data/companies.ts`](src/data/companies.ts)
-- Выгрузка из 2GIS: [`scripts/scrape-2gis.py`](scripts/scrape-2gis.py) (нужен `TWO_GIS_API_KEY`)
+- Курируемый каталог на сайте: [`src/data/companies.ts`](src/data/companies.ts)
+- **Сводная выгрузка** (застройщики с Elitka, бизнес-аккаунты House.kg, опционально 2GIS): [`scraped/merged-companies.json`](scraped/merged-companies.json)
+
+Установка зависимостей для скрапера:
 
 ```bash
-export TWO_GIS_API_KEY="..."
-python3 scripts/scrape-2gis.py --query "строительная компания" --city "Бишкек" --out scraped-companies.json
+pip3 install -r scripts/requirements-scrape.txt
+npm run scrape:sources
 ```
 
-Без ключа скрипт создаёт пример JSON.
+Параметры: `python3 scripts/scrape-all-sources.py --help` (например `--skip-house`, `--house-delay 0.2`).
+
+Чтобы подтянуть карточки из **2GIS**, задайте `TWO_GIS_API_KEY` и запустите тот же скрипт — блок `sources["2gis"]` заполнится автоматически.
+
+Отдельно только 2GIS (один запрос): [`scripts/scrape-2gis.py`](scripts/scrape-2gis.py).
 
 ## Ежедневная очередь контента
 
