@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { companies } from "@/data/companies";
 import { constructionTypes } from "@/data/constructionTypes";
+import { getElitkaProjectStaticParams } from "@/data/elitkaProjectsFromMerge";
 
 const base = "https://stroitelniekompaniikyrgyzstan.com";
 
@@ -37,5 +38,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.65,
   }));
 
-  return [...staticRoutes, ...companyRoutes, ...typeRoutes];
+  const projectRoutes: MetadataRoute.Sitemap = getElitkaProjectStaticParams().map((p) => ({
+    url: `${base}/projects/${p.projectId}/`,
+    lastModified: new Date(),
+    changeFrequency: "monthly" as const,
+    priority: 0.55,
+  }));
+
+  return [...staticRoutes, ...companyRoutes, ...typeRoutes, ...projectRoutes];
 }

@@ -109,6 +109,8 @@ export default function CompaniesCatalog() {
       if (filters.hasWebsite && !c.contacts.website) return false;
       if (filters.has2gis && !c.contacts.twogisUrl) return false;
 
+      if (filters.hideMinstroyBlacklistWarnings && c.minstroyBlacklistWarning) return false;
+
       return true;
     });
 
@@ -125,6 +127,7 @@ export default function CompaniesCatalog() {
     filters.license !== "all",
     filters.hasWebsite,
     filters.has2gis,
+    filters.hideMinstroyBlacklistWarnings,
   ].filter(Boolean).length;
 
   const stats = useMemo(() => {

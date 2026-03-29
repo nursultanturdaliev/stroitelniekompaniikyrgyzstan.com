@@ -28,6 +28,14 @@ export default function CompanyCard({ company, featured }: CompanyCardProps) {
               Лицензия
             </span>
           )}
+          {company.minstroyBlacklistWarning && (
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 font-medium"
+              title="По данным автоматического сопоставления с чёрным списком реестра Минстроя — проверьте на minstroy.gov.kg"
+            >
+              ЧС реестра?
+            </span>
+          )}
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { processSteps } from "@/data/practicalInfo";
+import { registryGuideDisclaimer, registryGuideSections } from "@/data/registryGuide";
 
 export const metadata: Metadata = {
   title: "Как выбрать подрядчика",
@@ -41,9 +42,56 @@ export default function GuidePage() {
           </ul>
         </div>
 
+        <div className="mt-12 p-6 bg-amber-50/80 rounded-xl border border-amber-100">
+          <h2 className="font-heading text-xl font-semibold text-[var(--charcoal)] mb-2">{registryGuideDisclaimer.title}</h2>
+          <p className="text-sm text-[var(--slate-blue)] mb-4">{registryGuideDisclaimer.body}</p>
+          <a
+            href={registryGuideDisclaimer.officialUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-[var(--steel-blue)] underline"
+          >
+            Официальный сайт Минстроя
+          </a>
+        </div>
+
+        <div className="mt-10 space-y-10">
+          <h2 className="font-heading text-2xl font-bold text-[var(--charcoal)]">Реестры и типы компаний</h2>
+          {registryGuideSections.map((section) => (
+            <section key={section.id} className="bg-white rounded-xl border border-gray-100 p-6">
+              <h3 className="font-heading text-lg font-semibold text-[var(--charcoal)] mb-3">{section.title}</h3>
+              <div className="text-sm text-[var(--slate-blue)] space-y-3 mb-4">
+                {section.paragraphs.map((p, i) => (
+                  <p key={`${section.id}-${i}`}>{p}</p>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Актуальность и толкование — только на официальном сайте Министерства строительства КР.
+              </p>
+              {section.ctaHref.startsWith("http") ? (
+                <a
+                  href={section.ctaHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-[var(--steel-blue)] hover:underline"
+                >
+                  {section.ctaLabel}
+                </a>
+              ) : (
+                <Link href={section.ctaHref} className="text-sm font-medium text-[var(--steel-blue)] hover:underline">
+                  {section.ctaLabel}
+                </Link>
+              )}
+            </section>
+          ))}
+        </div>
+
         <div className="mt-8 flex flex-wrap gap-4">
           <Link href="/companies/" className="btn-primary">
             Каталог компаний
+          </Link>
+          <Link href="/faq/" className="btn-secondary">
+            Частые вопросы
           </Link>
           <Link href="/negotiator/" className="btn-secondary">
             AI-переговорщик

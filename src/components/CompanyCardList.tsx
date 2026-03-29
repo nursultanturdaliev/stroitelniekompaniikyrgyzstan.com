@@ -29,6 +29,14 @@ export default function CompanyCardList({ company }: { company: ConstructionComp
                   Лицензия
                 </span>
               )}
+              {company.minstroyBlacklistWarning && (
+                <span
+                  className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-900"
+                  title="Автосопоставление с чёрным списком Минстроя — уточняйте на minstroy.gov.kg"
+                >
+                  ЧС?
+                </span>
+              )}
             </div>
             <p className="text-xs text-[var(--slate-blue)] truncate">{company.type.join(", ")}</p>
           </div>

@@ -95,6 +95,12 @@ export default function ActiveFilterTags({ filters, onChange }: ActiveFilterTags
 
   if (filters.hasWebsite) tags.push({ label: "Есть сайт", remove: () => onChange({ ...filters, hasWebsite: false }) });
   if (filters.has2gis) tags.push({ label: "Есть 2ГИС", remove: () => onChange({ ...filters, has2gis: false }) });
+  if (filters.hideMinstroyBlacklistWarnings) {
+    tags.push({
+      label: "Скрыты предупреждения ЧС",
+      remove: () => onChange({ ...filters, hideMinstroyBlacklistWarnings: false }),
+    });
+  }
 
   if (tags.length === 0) return null;
 
@@ -118,6 +124,7 @@ export default function ActiveFilterTags({ filters, onChange }: ActiveFilterTags
               license: "all",
               hasWebsite: false,
               has2gis: false,
+              hideMinstroyBlacklistWarnings: false,
             })
           }
           className="text-xs text-[var(--slate-blue)] hover:text-[var(--safety-orange)] underline ml-1"

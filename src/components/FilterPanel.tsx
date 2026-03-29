@@ -26,6 +26,8 @@ export interface CompanyFilterState {
   searchQuery: string;
   hasWebsite: boolean;
   has2gis: boolean;
+  /** Скрыть карточки с предупреждением по чёрному списку (автосопоставление) */
+  hideMinstroyBlacklistWarnings: boolean;
 }
 
 export const defaultCompanyFilters: CompanyFilterState = {
@@ -40,6 +42,7 @@ export const defaultCompanyFilters: CompanyFilterState = {
   searchQuery: "",
   hasWebsite: false,
   has2gis: false,
+  hideMinstroyBlacklistWarnings: false,
 };
 
 const allCompanyTypes: CompanyType[] = [
@@ -159,6 +162,7 @@ export default function FilterPanel({
     filters.license !== "all",
     filters.hasWebsite,
     filters.has2gis,
+    filters.hideMinstroyBlacklistWarnings,
   ].filter(Boolean).length;
 
   const resetAll = () => onChange({ ...defaultCompanyFilters, searchQuery: filters.searchQuery, sortBy: filters.sortBy });
@@ -358,6 +362,20 @@ export default function FilterPanel({
               className="rounded border-gray-300"
             />
             Есть 2ГИС
+          </label>
+          <label className="flex items-start gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filters.hideMinstroyBlacklistWarnings}
+              onChange={(e) => update({ hideMinstroyBlacklistWarnings: e.target.checked })}
+              className="rounded border-gray-300 mt-0.5"
+            />
+            <span>
+              Скрыть компании с предупреждением по чёрному списку
+              <span className="block text-xs text-gray-400 mt-0.5">
+                Только карточки с флагом автосопоставления с реестром Минстроя (ур. 6)
+              </span>
+            </span>
           </label>
         </div>
       </Section>

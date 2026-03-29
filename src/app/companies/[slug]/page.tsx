@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { companies, getCompanyBySlug } from "@/data/companies";
+import { minstroyRegistrySummary } from "@/data/scrapedMergedCompanies";
 import { getExternalLinksForCompany, getReviewsForCompany } from "@/data/reviews";
 import ContactCard from "@/components/ContactCard";
 import ReviewSection from "@/components/ReviewSection";
@@ -107,6 +108,40 @@ export default async function CompanyPage({ params }: Props) {
         </div>
       </section>
 
+      {company.minstroyBlacklistWarning && (
+        <section className="bg-amber-50 border-y border-amber-100">
+          <div className="container-custom py-6">
+            <div className="flex gap-3 items-start">
+              <span className="text-2xl flex-shrink-0" aria-hidden>
+                ⚠
+              </span>
+              <div className="text-sm text-[var(--slate-blue)] space-y-2">
+                <h2 className="font-heading text-lg font-semibold text-[var(--charcoal)]">
+                  Совпадение с чёрным списком реестра Минстроя
+                </h2>
+                <p>
+                  По данным <strong>автоматического сопоставления</strong> названия компании с открытым реестром есть
+                  записи, относящиеся к разделу с нарушениями (уровень 6). Это не юридический вывод и не подтверждение
+                  вины — возможны однофамильцы и ошибки сопоставления.
+                </p>
+                <p>
+                  Уточняйте статус только на официальном сайте:{" "}
+                  <a
+                    href="https://minstroy.gov.kg/ru/license/reestr/6"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--steel-blue)] font-medium underline"
+                  >
+                    реестр Минстроя (раздел 6)
+                  </a>
+                  . Каталог не исключает компании из списка автоматически.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="section-padding bg-[var(--soft-white)]">
         <div className="container-custom grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
@@ -159,9 +194,29 @@ export default async function CompanyPage({ params }: Props) {
                 <h2 className="font-heading text-xl font-semibold text-[var(--charcoal)] mb-4">Проекты</h2>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {company.completedProjects.map((p) => (
-                    <ProjectCard key={p.title} project={p} />
+                    <ProjectCard key={p.key ?? p.title} project={p} />
                   ))}
                 </div>
+                <p className="mt-4 text-xs text-gray-400 max-w-2xl">
+                  По объектам из elitka.kg указаны <strong>плановые</strong> сроки и статусы из каталога; это не замена
+                  проверки паспорта объекта на{" "}
+                  <a href="https://minstroy.gov.kg" className="text-[var(--steel-blue)] underline" target="_blank" rel="noopener noreferrer">
+                    minstroy.gov.kg
+                  </a>
+                  .
+                  {minstroyRegistrySummary.scrapedAt && (
+                    <>
+                      {" "}
+                      Дата снимка выгрузки:{" "}
+                      {new Date(minstroyRegistrySummary.scrapedAt).toLocaleDateString("ru-RU", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                      .
+                    </>
+                  )}
+                </p>
               </div>
             )}
 
