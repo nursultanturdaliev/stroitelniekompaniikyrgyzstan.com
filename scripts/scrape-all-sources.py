@@ -14,6 +14,9 @@
   python3 scripts/scrape-all-sources.py --skip-minstroy
   python3 scripts/scrape-all-sources.py --skip-elitka-details   # без /api/objects/{id}
   python3 scripts/scrape-all-sources.py --house-delay 0.4
+  python3 scripts/scrape-all-sources.py --passport-scrape       # + HTML паспортов (долго)
+  python3 scripts/scrape-all-sources.py --passport-only --merged-in scraped/merged-companies.json --out scraped/merged-companies.json
+  python3 scripts/scrape-all-sources.py --passport-only --passport-max 20   # тест на 20 URL
 """
 
 from __future__ import annotations
@@ -704,6 +707,129 @@ def minstroy_slim_for_inn_index(rec: dict) -> dict:
     return {k: rec[k] for k in keys if k in rec and rec[k]}
 
 
+def normalize_passport_url(url: str) -> str:
+    """Канонический ключ для словаря снимков паспорта."""
+    u = (url or "").strip()
+    if not u.startswith("http"):
+        return u.rstrip("/")
+    parsed = urllib.parse.urlparse(u)
+    path = parsed.path.rstrip("/") or "/"
+    return f"{parsed.scheme}://{parsed.netloc.lower()}{path}"
+
+
+def parse_minstroy_passport_html(html: str) -> dict[str, str]:
+    """Парсинг публичной HTML-страницы паспорта объекта (minstroy.gov.kg)."""
+    soup = BeautifulSoup(html, "html.parser")
+    fields: dict[str, str] = {}
+    for block in soup.select("div.flex-block.column-block"):
+        label_el = block.select_one(".txt-label")
+        if not label_el:
+            continue
+        label = label_el.get_text(strip=True)
+        if not label or "buidlding-" in label:
+            continue
+        val_el = label_el.find_next_sibling("div")
+        if val_el is None:
+            continue
+        value = val_el.get_text(" ", strip=True)
+        if label not in fields:
+            fields[label] = value
+    return fields
+
+
+def collect_passport_urls_from_elitka_builders(builders: list) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for b in builders:
+        for o in b.get("objects") or []:
+            if not isinstance(o, dict):
+                continue
+            for u in (o.get("gosstroy_registry"),):
+                if isinstance(u, str) and u.startswith("http"):
+                    nu = normalize_passport_url(u)
+                    if nu not in seen:
+                        seen.add(nu)
+                        out.append(nu)
+            d = o.get("detail")
+            if isinstance(d, dict):
+                u = d.get("gosstroy_registry")
+                if isinstance(u, str) and u.startswith("http"):
+                    nu = normalize_passport_url(u)
+                    if nu not in seen:
+                        seen.add(nu)
+                        out.append(nu)
+    return out
+
+
+def fetch_minstroy_passport_pages(
+    urls: list[str],
+    session: requests.Session,
+    delay_s: float,
+    max_urls: int,
+) -> tuple[dict[str, dict], dict[str, int]]:
+    """
+    Возвращает by_url -> { http_status, error, fields, fetched_at } и счётчики.
+    """
+    by_url: dict[str, dict] = {}
+    stats = {"requested": 0, "ok_200": 0, "http_errors": 0, "fetch_errors": 0}
+    limit = len(urls) if max_urls <= 0 else min(len(urls), max_urls)
+    for i, url in enumerate(urls[:limit]):
+        stats["requested"] += 1
+        nu = normalize_passport_url(url)
+        rec: dict[str, object] = {
+            "http_status": None,
+            "error": None,
+            "fields": {},
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            r = session.get(url, timeout=90)
+            rec["http_status"] = r.status_code
+            if r.status_code == 200:
+                rec["fields"] = parse_minstroy_passport_html(r.text)
+                stats["ok_200"] += 1
+            else:
+                rec["error"] = f"HTTP {r.status_code}"
+                stats["http_errors"] += 1
+        except requests.RequestException as e:
+            rec["error"] = str(e)
+            stats["fetch_errors"] += 1
+        by_url[nu] = rec
+        if delay_s > 0:
+            time.sleep(delay_s)
+        print(f"  паспорт HTML: {i + 1}/{limit} {nu[:72]}…", file=sys.stderr)
+        sys.stderr.flush()
+    return by_url, stats
+
+
+def attach_passport_pages_to_payload(
+    payload: dict,
+    session: requests.Session,
+    delay_s: float,
+    max_urls: int,
+) -> None:
+    builders = payload.get("sources", {}).get("elitka", {}).get("builders") or []
+    urls = collect_passport_urls_from_elitka_builders(builders)
+    print(f"Minstroy.gov.kg: уникальных URL паспортов: {len(urls)}", file=sys.stderr)
+    if not urls:
+        return
+    by_url, stats = fetch_minstroy_passport_pages(urls, session, delay_s, max_urls)
+    minst = payload.setdefault("sources", {}).setdefault("minstroy", {})
+    minst["passport_pages"] = {
+        "note_ru": (
+            "Текстовые поля сняты с публичных HTML-страниц паспортов на minstroy.gov.kg. "
+            "Не юридическая консультация; актуальность и толкование — только на официальном сайте."
+        ),
+        "scrapedAt": datetime.now(timezone.utc).isoformat(),
+        "stats": stats,
+        "by_url": by_url,
+    }
+    print(
+        f"  паспортов сохранено: {stats['ok_200']} OK, HTTP-ошибок: {stats['http_errors']}, сетевых: {stats['fetch_errors']}",
+        file=sys.stderr,
+    )
+
+
 def fetch_minstroy_all_levels(
     session: requests.Session,
     levels: list[int],
@@ -781,6 +907,23 @@ def main() -> int:
         help="предохранитель: макс. страниц на один уровень",
     )
     ap.add_argument("--minstroy-delay", type=float, default=0.2)
+    ap.add_argument(
+        "--passport-scrape",
+        action="store_true",
+        help="после сборки elitka: скачать HTML паспортов minstroy.gov.kg и разобрать поля (дольше)",
+    )
+    ap.add_argument("--passport-delay", type=float, default=0.35, help="пауза между запросами паспортов")
+    ap.add_argument("--passport-max", type=int, default=0, help="лимит URL паспортов (0 = все уникальные)")
+    ap.add_argument(
+        "--passport-only",
+        action="store_true",
+        help="только обновить passport_pages в существующем JSON (--merged-in → --out)",
+    )
+    ap.add_argument(
+        "--merged-in",
+        default="scraped/merged-companies.json",
+        help="входной JSON для --passport-only",
+    )
     args = ap.parse_args()
 
     session = requests.Session()
@@ -790,6 +933,25 @@ def main() -> int:
             "Accept-Language": "ru-RU,ru;q=0.9",
         }
     )
+
+    if args.passport_only:
+        in_path = os.path.abspath(args.merged_in)
+        out_path = os.path.abspath(args.out)
+        if not os.path.isfile(in_path):
+            print(f"Файл не найден: {in_path}", file=sys.stderr)
+            return 1
+        with open(in_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        print("Режим --passport-only: обновление HTML-паспортов Минстроя…", file=sys.stderr)
+        attach_passport_pages_to_payload(payload, session, args.passport_delay, args.passport_max)
+        out_dir = os.path.dirname(out_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        print(f"Записано: {out_path}", file=sys.stderr)
+        return 0
 
     cities = [int(x.strip()) for x in args.elitka_cities.split(",") if x.strip()]
     elitka_raw: list[dict] = []
@@ -888,6 +1050,10 @@ def main() -> int:
             "minstroy_unique_inn": len(minstroy_by_inn),
         },
     }
+
+    if args.passport_scrape:
+        print("Minstroy.gov.kg: загрузка HTML паспортов объектов…", file=sys.stderr)
+        attach_passport_pages_to_payload(payload, session, args.passport_delay, args.passport_max)
 
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)

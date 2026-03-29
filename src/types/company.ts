@@ -44,6 +44,13 @@ export interface CompletedProject {
   scheduleSlipNote?: string;
   /** Ссылка на паспорт объекта на сайте Минстроя */
   passportUrl?: string;
+  /** Поля со страницы паспорта (если есть снимок в merged JSON после scrape) */
+  passportSnapshot?: {
+    fetchedAt?: string;
+    httpStatus?: number | null;
+    parseError?: string | null;
+    fields: Record<string, string>;
+  };
 }
 
 export interface ConstructionCompany {

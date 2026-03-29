@@ -11,6 +11,7 @@ import {
   plannedMonthsBetween,
   scheduleSlipNoteRu,
 } from "@/lib/elitkaSchedule";
+import { passportEntryForUrl } from "@/lib/minstroyPassportSnapshot";
 import mergedRaw from "../../scraped/merged-companies.json";
 
 type ElitkaObjectDetail = Record<string, unknown>;
@@ -114,6 +115,19 @@ type MergedFile = {
       licenses: MinstroyLicenseRow[];
       /** Компактные записи без поля source (как в выгрузке скрипта). */
       by_inn: Record<string, Array<Partial<MinstroyLicenseRow> & { registry_level: number }>>;
+      passport_pages?: {
+        scrapedAt?: string;
+        note_ru?: string;
+        by_url?: Record<
+          string,
+          {
+            http_status: number | null;
+            error: string | null;
+            fields: Record<string, string>;
+            fetched_at?: string;
+          }
+        >;
+      };
     };
   };
 };
@@ -325,6 +339,18 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     kgs ? `от ${Math.round(kgs).toLocaleString("ru-RU")} сом/м²` : null,
   ].filter(Boolean);
   const oid = typeof o.id === "number" ? o.id : undefined;
+  const passportSnap = regUrl ? passportEntryForUrl(regUrl) : undefined;
+  const hasPassportSnap =
+    passportSnap &&
+    (Object.keys(passportSnap.fields || {}).length > 0 || passportSnap.error);
+  const passportSnapshot = hasPassportSnap
+    ? {
+        fetchedAt: passportSnap!.fetched_at,
+        httpStatus: passportSnap!.http_status,
+        parseError: passportSnap!.error ?? undefined,
+        fields: passportSnap!.fields || {},
+      }
+    : undefined;
   return {
     title: o.title,
     description: desc || "Объект из каталога elitka.kg",
@@ -344,6 +370,7 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     plannedDurationMonths: plannedMonthsBetween(startIso, finishIso),
     scheduleSlipNote: scheduleSlipNoteRu(initialFinishIso, finishIso),
     passportUrl: regUrl ?? undefined,
+    passportSnapshot,
   };
 }
 

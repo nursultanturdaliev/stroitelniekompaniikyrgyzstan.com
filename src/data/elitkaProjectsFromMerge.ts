@@ -4,7 +4,8 @@ import {
   plannedMonthsBetween,
   scheduleSlipNoteRu,
 } from "@/lib/elitkaSchedule";
-import type { ServiceCategory } from "@/types/company";
+import { passportEntryForUrl } from "@/lib/minstroyPassportSnapshot";
+import type { CompletedProject, ServiceCategory } from "@/types/company";
 import mergedRaw from "../../scraped/merged-companies.json";
 
 type ElitkaObjectDetail = Record<string, unknown>;
@@ -57,6 +58,7 @@ export type ElitkaProjectPageData = {
   plannedDurationMonths?: number;
   scheduleSlipNote?: string;
   projectType: ServiceCategory;
+  passportSnapshot?: CompletedProject["passportSnapshot"];
 };
 
 function objectToPageData(
@@ -82,6 +84,16 @@ function objectToPageData(
   const statusRaw = typeof d?.status === "string" ? d.status : undefined;
   const lat = typeof d?.lat === "number" ? d.lat : undefined;
   const lng = typeof d?.lon === "number" ? d.lon : undefined;
+  const pSnap = regUrl ? passportEntryForUrl(regUrl) : undefined;
+  const hasSnap = pSnap && (Object.keys(pSnap.fields || {}).length > 0 || pSnap.error);
+  const passportSnapshot = hasSnap
+    ? {
+        fetchedAt: pSnap!.fetched_at,
+        httpStatus: pSnap!.http_status,
+        parseError: pSnap!.error ?? undefined,
+        fields: pSnap!.fields || {},
+      }
+    : undefined;
 
   return {
     projectId: `elitka-${oid}`,
@@ -101,6 +113,7 @@ function objectToPageData(
     plannedDurationMonths: plannedMonthsBetween(startIso, finishIso),
     scheduleSlipNote: scheduleSlipNoteRu(initialFinishIso, finishIso),
     projectType: projectTypeFromTitle(o.title),
+    passportSnapshot,
   };
 }
 

@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getElitkaProjectPageData, getElitkaProjectStaticParams } from "@/data/elitkaProjectsFromMerge";
+import PassportSnapshotSection from "@/components/PassportSnapshotSection";
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
 
@@ -136,6 +137,12 @@ export default async function ElitkaProjectPage({ params }: Props) {
             )}
           </section>
         ) : null}
+
+        {data.passportSnapshot && (
+          <section className="mb-8">
+            <PassportSnapshotSection passportUrl={data.passportUrl} snapshot={data.passportSnapshot} />
+          </section>
+        )}
 
         <div className="flex flex-wrap gap-3 mb-8">
           {data.passportUrl && (

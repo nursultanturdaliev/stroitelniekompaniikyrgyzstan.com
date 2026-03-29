@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CompletedProject } from "@/types/company";
+import PassportSnapshotSection from "@/components/PassportSnapshotSection";
 
 export default function ProjectCard({ project }: { project: CompletedProject }) {
   const detailHref =
@@ -92,6 +93,12 @@ export default function ProjectCard({ project }: { project: CompletedProject }) 
               />
             </svg>
           </a>
+        )}
+
+        {project.passportSnapshot && (
+          <div className="mb-2">
+            <PassportSnapshotSection snapshot={project.passportSnapshot} compact />
+          </div>
         )}
 
         <p className="text-[10px] text-gray-400 mt-auto leading-snug">

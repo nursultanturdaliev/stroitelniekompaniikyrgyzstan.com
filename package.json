@@ -11,7 +11,8 @@
     "deploy": "npm run build && wrangler pages deploy out --project-name=stroitelniekompaniikyrgyzstan",
     "preview": "npm run build && npx serve out",
     "pages:dev": "npm run build && wrangler pages dev out",
-    "scrape:sources": "python3 scripts/scrape-all-sources.py --out scraped/merged-companies.json"
+    "scrape:sources": "python3 scripts/scrape-all-sources.py --out scraped/merged-companies.json",
+    "scrape:passports": "python3 scripts/scrape-all-sources.py --passport-only --merged-in scraped/merged-companies.json --out scraped/merged-companies.json"
   },
   "dependencies": {
     "next": "16.2.1",
