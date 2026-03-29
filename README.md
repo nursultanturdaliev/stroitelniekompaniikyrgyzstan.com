@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Строительные компании Кыргызстана
 
-## Getting Started
+Независимый каталог строительных, проектных и ремонтных компаний (Next.js 16, статический экспорт, Tailwind CSS v4).
 
-First, run the development server:
+## Разработка
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Сборка статики:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Локальный просмотр `out/`:
 
-## Learn More
+```bash
+npm run preview
+```
 
-To learn more about Next.js, take a look at the following resources:
+## AI-переговорщик (Cloudflare Pages + OpenAI)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Чат вызывает `POST /api/chat`. В режиме `next dev` этого маршрута нет — используйте:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run pages:dev
+```
 
-## Deploy on Vercel
+Перед этим задайте секрет **`OPENAI_API_KEY`** в настройках Cloudflare Pages (Production / Preview).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Функция: [`functions/api/chat.ts`](functions/api/chat.ts).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Деплой на Cloudflare Pages
+
+```bash
+npm run deploy
+```
+
+Или подключите репозиторий к Pages: build command `npm run build`, output `out`. Каталог **`functions/`** в корне подхватывается автоматически.
+
+## Данные и 2GIS
+
+- Карточки: [`src/data/companies.ts`](src/data/companies.ts)
+- Выгрузка из 2GIS: [`scripts/scrape-2gis.py`](scripts/scrape-2gis.py) (нужен `TWO_GIS_API_KEY`)
+
+```bash
+export TWO_GIS_API_KEY="..."
+python3 scripts/scrape-2gis.py --query "строительная компания" --city "Бишкек" --out scraped-companies.json
+```
+
+Без ключа скрипт создаёт пример JSON.
+
+## Ежедневная очередь контента
+
+```bash
+npm run daily:update
+```
+
+GitHub Actions: [`.github/workflows/daily-publishing.yml`](.github/workflows/daily-publishing.yml).
+
+## Лицензия
+
+Проект-шаблон каталога; наполнение и торговая марка — на вашей стороне.

@@ -1,0 +1,6 @@
+# Cloudflare Pages: connect repo or use `wrangler pages deploy out`
+# Set production secret: OPENAI_API_KEY (Dashboard → Pages → Settings → Environment variables)
+
+name = "stroitelniekompaniikyrgyzstan"
+compatibility_date = "2025-03-01"
+pages_build_output_dir = "out"

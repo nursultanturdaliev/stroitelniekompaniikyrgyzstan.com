@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "daily:update": "node scripts/daily-publishing.mjs",
+    "deploy": "npm run build && wrangler pages deploy out --project-name=stroitelniekompaniikyrgyzstan",
+    "preview": "npm run build && npx serve out",
+    "pages:dev": "npm run build && wrangler pages dev out"
   },
   "dependencies": {
     "next": "16.2.1",
@@ -14,6 +18,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250317.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -21,6 +26,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.6.0"
   }
 }

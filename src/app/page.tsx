@@ -1,65 +1,110 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import Hero from "@/components/Hero";
+import SectionTitle from "@/components/SectionTitle";
+import CompanyCard from "@/components/CompanyCard";
+import TypeCard from "@/components/TypeCard";
+import DailyUpdatesFeed from "@/components/DailyUpdatesFeed";
+import { companies } from "@/data/companies";
+import { constructionTypes } from "@/data/constructionTypes";
+import { quickFacts, processSteps } from "@/data/practicalInfo";
+import dailyUpdatesData from "@/data/dailyUpdates.json";
 
 export default function Home() {
+  const featured = companies.slice(0, 6);
+  const typePreview = constructionTypes.slice(0, 3);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <Hero />
+
+      <section className="relative -mt-8 z-20 pb-8">
+        <div className="container-custom">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {quickFacts.map((fact) => (
+              <div
+                key={fact.label}
+                className="bg-white rounded-xl p-5 shadow-lg border border-gray-50 text-center"
+              >
+                <span className="text-2xl md:text-3xl font-heading font-bold text-[var(--steel-blue)]">
+                  {fact.value}
+                </span>
+                <span className="block text-sm text-[var(--slate-blue)] mt-1">{fact.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      <section className="section-padding bg-[var(--soft-white)]">
+        <div className="container-custom">
+          <SectionTitle
+            subtitle="Каталог"
+            title="Строительные компании"
+            description="Проверенные карточки с услугами, лицензиями, ориентирами по ценам и ссылками на отзывы"
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {featured.map((company, index) => (
+              <CompanyCard key={company.id} company={company} featured={index === 0} />
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link href="/companies/" className="btn-primary">
+              Все компании
+            </Link>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <section className="section-padding bg-white">
+        <div className="container-custom">
+          <SectionTitle
+            subtitle="Типы работ"
+            title="Выберите сегмент"
+            description="Краткие гайды: что входит в работы, какие вопросы задать и какие риски учесть"
+          />
+          <div className="grid md:grid-cols-3 gap-6">
+            {typePreview.map((t) => (
+              <TypeCard key={t.id} type={t} />
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link href="/types/" className="btn-secondary">
+              Все типы работ
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      <DailyUpdatesFeed updatedAt={dailyUpdatesData.updatedAt} items={dailyUpdatesData.items} />
+
+      <section className="section-padding bg-[var(--soft-white)]">
+        <div className="container-custom">
+          <SectionTitle
+            subtitle="Процесс"
+            title="Как принять взвешенное решение"
+            description="Четыре шага до подписания договора с подрядчиком"
+          />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {processSteps.map((s) => (
+              <div key={s.step} className="bg-white rounded-xl p-6 border border-gray-100">
+                <span className="text-3xl font-heading font-bold text-[var(--safety-orange)]">{s.step}</span>
+                <h3 className="font-heading text-lg font-semibold text-[var(--charcoal)] mt-2 mb-2">{s.title}</h3>
+                <p className="text-sm text-[var(--slate-blue)]">{s.body}</p>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10 flex flex-wrap justify-center gap-4">
+            <Link href="/guide/" className="btn-primary">
+              Полный гид
+            </Link>
+            <Link href="/negotiator/" className="btn-secondary">
+              Подготовка к переговорам
+            </Link>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
