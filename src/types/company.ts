@@ -100,6 +100,14 @@ export interface ElitkaObjectFacts {
   apartments?: Array<Record<string, string | number | null | undefined>>;
   roomCounts?: Partial<Record<ElitkaRoomCountKey, number>>;
   labels?: unknown;
+  /** Текст описания из детального ответа API (после slim в merge) */
+  descriptionText?: string;
+  /** Поля из API elitka.kg: заказчик / генподряд (если есть в выгрузке). */
+  catalogClient?: string;
+  catalogPerformer?: string;
+  catalogApproved?: boolean;
+  catalogSafe?: boolean;
+  catalogIsActive?: boolean;
 }
 
 export interface CompletedProject {
@@ -132,6 +140,9 @@ export interface CompletedProject {
   };
   /** Структурированные поля из детальной карточки elitka.kg (если были в выгрузке). */
   elitkaFacts?: ElitkaObjectFacts;
+  /** Цена из списка объектов elitka (если в деталях нет price_usd/price_kgs). */
+  listPriceUsdM2?: string;
+  listPriceKgsM2?: string;
 }
 
 export interface ConstructionCompany {

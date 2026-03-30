@@ -150,6 +150,10 @@ type MergedFile = {
         }
       >;
     };
+    project_cross_listings?: {
+      note_ru?: string;
+      by_elitka_object_id?: Record<string, unknown>;
+    };
   };
 };
 
@@ -373,6 +377,8 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     (typeof dRecord?.main_img === "string" ? dRecord.main_img : null) || o.main_img || null;
   const galleryImages =
     oid != null ? elitkaObjectImageUrls(oid, mainForGallery, dRecord?.images ?? null) : [];
+  const listUsdRaw = typeof o.price_usd_m2 === "string" ? o.price_usd_m2.trim() : "";
+  const listKgsRaw = typeof o.price_kgs_m2 === "string" ? o.price_kgs_m2.trim() : "";
   return {
     title: o.title,
     description: desc || "Объект из каталога elitka.kg",
@@ -395,6 +401,8 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     passportUrl: regUrl ?? undefined,
     passportSnapshot,
     elitkaFacts,
+    listPriceUsdM2: listUsdRaw && listUsdRaw !== "0" ? listUsdRaw : undefined,
+    listPriceKgsM2: listKgsRaw && listKgsRaw !== "0" ? listKgsRaw : undefined,
   };
 }
 

@@ -292,6 +292,15 @@ def slim_elitka_object_detail(d: dict) -> dict[str, object]:
         "created_at": d.get("created_at"),
         "updated_at": d.get("updated_at"),
         "description_text": html_to_text(d.get("description"), 4500),
+        "client": (str(d.get("client")).strip() if isinstance(d.get("client"), str) and str(d.get("client")).strip() else None),
+        "performer": (
+            str(d.get("performer")).strip()
+            if isinstance(d.get("performer"), str) and str(d.get("performer")).strip()
+            else None
+        ),
+        "approved": d.get("approved") if d.get("approved") is not None else None,
+        "safe": d.get("safe") if d.get("safe") is not None else None,
+        "is_active": d.get("is_active") if d.get("is_active") is not None else None,
     }
     for k in room_keys:
         v = d.get(k)
@@ -868,6 +877,25 @@ def parse_minstroy_passport_html(html: str) -> dict[str, str]:
             continue
         value = val_el.get_text(" ", strip=True)
         if label not in fields:
+            fields[label] = value
+    for tr in soup.select("table tr"):
+        cells = tr.find_all(["td", "th"])
+        if len(cells) < 2:
+            continue
+        label = cells[0].get_text(" ", strip=True).rstrip(":").strip()
+        value = cells[1].get_text(" ", strip=True)
+        if len(label) < 2 or not value or label in fields:
+            continue
+        fields[label] = value
+    for dl in soup.select("dl"):
+        for dt in dl.find_all("dt"):
+            dd = dt.find_next_sibling("dd")
+            if not dd:
+                continue
+            label = dt.get_text(" ", strip=True).rstrip(":").strip()
+            value = dd.get_text(" ", strip=True)
+            if len(label) < 2 or not value or label in fields:
+                continue
             fields[label] = value
     return fields
 
@@ -1920,6 +1948,10 @@ def main() -> int:
                 "note_ru": "Данные скопированы с публичных страниц реестра Министерства строительства КР. Актуальность уточняйте на minstroy.gov.kg.",
                 "licenses": minstroy_licenses,
                 "by_inn": minstroy_by_inn,
+            },
+            "project_cross_listings": {
+                "note_ru": "Опционально: объявления с других площадок, сопоставленные с id объекта elitka (эвристика). Заполняется отдельным процессом.",
+                "by_elitka_object_id": {},
             },
         },
         "stats": {

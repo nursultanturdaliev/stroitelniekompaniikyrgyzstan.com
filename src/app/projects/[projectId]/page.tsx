@@ -5,9 +5,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCompanyBySlug } from "@/data/companies";
 import { getElitkaProjectPageData, getElitkaProjectStaticParams } from "@/data/elitkaProjectsFromMerge";
 import ElitkaObjectFactsSection from "@/components/ElitkaObjectFactsSection";
 import PassportSnapshotSection from "@/components/PassportSnapshotSection";
+import ProjectBuyerGuideSection from "@/components/ProjectBuyerGuideSection";
+import ProjectBuyerSnapshot from "@/components/ProjectBuyerSnapshot";
+import ProjectBuilderTrustStrip from "@/components/ProjectBuilderTrustStrip";
+import ProjectCrossListingsSection from "@/components/ProjectCrossListingsSection";
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
 
@@ -36,6 +41,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
   const { projectId } = await params;
   const data = getElitkaProjectPageData(projectId);
   if (!data) notFound();
+
+  const builderCompany = getCompanyBySlug(data.builderSlug);
 
   const mapHref =
     data.lat != null && data.lng != null
@@ -71,7 +78,17 @@ export default async function ElitkaProjectPage({ params }: Props) {
 
         <h1 className="font-heading text-2xl md:text-3xl font-bold text-[var(--charcoal)] mb-2">{data.title}</h1>
         <p className="text-[var(--slate-blue)] mb-2">{data.address}</p>
-        <p className="text-xs text-[var(--steel-blue)] mb-6">{data.projectType}</p>
+        <p className="text-xs text-[var(--steel-blue)] mb-4">{data.projectType}</p>
+
+        <ProjectBuyerSnapshot
+          statusLabel={data.statusLabel}
+          plannedFinishDisplay={data.plannedFinishDisplay}
+          displayPriceUsdM2={data.displayPriceUsdM2}
+          displayPriceKgsM2={data.displayPriceKgsM2}
+          listPriceUsdM2={data.listPriceUsdM2}
+          listPriceKgsM2={data.listPriceKgsM2}
+          elitkaFacts={data.elitkaFacts}
+        />
 
         {data.galleryImageUrls.length > 0 && (
           <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-xl overflow-hidden border border-gray-100">
@@ -90,9 +107,9 @@ export default async function ElitkaProjectPage({ params }: Props) {
           </div>
         )}
 
-        {data.statusLabel && (
-          <p className="text-sm font-medium text-[var(--charcoal)] mb-4">{data.statusLabel}</p>
-        )}
+        {builderCompany && <ProjectBuilderTrustStrip company={builderCompany} />}
+
+        <ProjectBuyerGuideSection passportUrl={data.passportUrl} builderSlug={data.builderSlug} />
 
         {(data.plannedStartDisplay || data.plannedFinishDisplay) && (
           <section className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
@@ -156,14 +173,22 @@ export default async function ElitkaProjectPage({ params }: Props) {
           </section>
         ) : null}
 
-        {data.elitkaFacts && (
-          <ElitkaObjectFactsSection facts={data.elitkaFacts} objectId={data.elitkaObjectId} />
+        {data.passportSnapshot && (
+          <section className="mb-6">
+            <h2 className="font-heading text-lg font-semibold text-[var(--charcoal)] mb-2">Паспорт (снимок страницы)</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Фрагмент полей с официальной HTML-страницы Минстроя; полный текст — только на сайте ведомства.
+            </p>
+            <PassportSnapshotSection passportUrl={data.passportUrl} snapshot={data.passportSnapshot} compact />
+          </section>
         )}
 
-        {data.passportSnapshot && (
-          <section className="mb-8">
-            <PassportSnapshotSection passportUrl={data.passportUrl} snapshot={data.passportSnapshot} />
-          </section>
+        {data.elitkaFacts && (
+          <ElitkaObjectFactsSection facts={data.elitkaFacts} objectId={data.elitkaObjectId} tiered />
+        )}
+
+        {data.crossListings && data.crossListings.length > 0 && (
+          <ProjectCrossListingsSection items={data.crossListings} />
         )}
 
         <div className="flex flex-wrap gap-3 mb-8">

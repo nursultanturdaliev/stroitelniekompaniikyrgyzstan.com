@@ -2,9 +2,33 @@ import Link from "next/link";
 import type { CompletedProject } from "@/types/company";
 import PassportSnapshotSection from "@/components/PassportSnapshotSection";
 
+function formatPriceM2Line(project: CompletedProject): string | undefined {
+  const f = project.elitkaFacts;
+  const du = f?.detailPriceUsd != null ? String(f.detailPriceUsd).trim() : "";
+  const dk = f?.detailPriceKgs != null ? String(f.detailPriceKgs).trim() : "";
+  const hasDetail = (du && du !== "0") || (dk && dk !== "0");
+  if (hasDetail) {
+    const bits = [
+      du && du !== "0" ? `$${du}/м²` : null,
+      dk && dk !== "0" ? `${Number(dk).toLocaleString("ru-RU")} сом/м²` : null,
+    ].filter(Boolean);
+    return bits.length ? bits.join(" · ") : undefined;
+  }
+  const lu = project.listPriceUsdM2?.trim();
+  const lk = project.listPriceKgsM2?.trim();
+  const usd = lu && lu !== "0" ? Number.parseFloat(lu.replace(",", ".")) : NaN;
+  const kgs = lk && lk !== "0" ? Number.parseFloat(lk.replace(",", ".")) : NaN;
+  const bits = [
+    Number.isFinite(usd) ? `от $${Math.round(usd)}/м²` : lu && lu !== "0" ? `от $${lu}/м²` : null,
+    Number.isFinite(kgs) ? `от ${Math.round(kgs).toLocaleString("ru-RU")} сом/м²` : lk && lk !== "0" ? `от ${lk} сом/м²` : null,
+  ].filter(Boolean);
+  return bits.length ? bits.join(" · ") : undefined;
+}
+
 export default function ProjectCard({ project }: { project: CompletedProject }) {
   const detailHref =
     project.elitkaObjectId != null ? `/projects/elitka-${project.elitkaObjectId}/` : null;
+  const priceM2Line = formatPriceM2Line(project);
 
   return (
     <div className="bg-white rounded-xl border border-gray-100 overflow-hidden flex flex-col h-full">
@@ -65,6 +89,13 @@ export default function ProjectCard({ project }: { project: CompletedProject }) 
         {project.scheduleSlipNote && (
           <p className="text-xs text-[var(--slate-blue)] mb-2 border-l-2 border-[var(--safety-orange)]/50 pl-2">
             {project.scheduleSlipNote}
+          </p>
+        )}
+
+        {priceM2Line && (
+          <p className="text-xs font-medium text-[var(--charcoal)] mb-2">
+            <span className="text-gray-500 font-normal">Цена (каталог): </span>
+            {priceM2Line}
           </p>
         )}
 
@@ -132,7 +163,7 @@ export default function ProjectCard({ project }: { project: CompletedProject }) 
 
         {project.passportSnapshot && (
           <div className="mb-2">
-            <PassportSnapshotSection snapshot={project.passportSnapshot} compact />
+            <PassportSnapshotSection snapshot={project.passportSnapshot} passportUrl={project.passportUrl} compact />
           </div>
         )}
 

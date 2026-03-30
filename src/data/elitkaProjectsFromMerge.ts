@@ -31,12 +31,43 @@ type ElitkaBuilderJson = {
   objects: ElitkaObjectJson[];
 };
 
+export type ProjectCrossListing = {
+  source_label: string;
+  url: string;
+  title?: string;
+  note?: string;
+};
+
 type MergedRoots = {
   scrapedAt: string;
-  sources: { elitka: { builders: ElitkaBuilderJson[] } };
+  sources: {
+    elitka: { builders: ElitkaBuilderJson[] };
+    /** Опционально: сопоставление объявлений с других площадок (заполняется скриптом). */
+    project_cross_listings?: {
+      note_ru?: string;
+      by_elitka_object_id?: Record<string, ProjectCrossListing[]>;
+    };
+  };
 };
 
 const merged = mergedRaw as unknown as MergedRoots;
+
+function normalizeCrossListings(raw: unknown): ProjectCrossListing[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: ProjectCrossListing[] = [];
+  for (const it of raw) {
+    if (!it || typeof it !== "object") continue;
+    const o = it as Record<string, unknown>;
+    const source_label = typeof o.source_label === "string" ? o.source_label.trim() : "";
+    const url = typeof o.url === "string" && o.url.trim().startsWith("http") ? o.url.trim() : "";
+    if (!source_label || !url) continue;
+    const row: ProjectCrossListing = { source_label, url };
+    if (typeof o.title === "string" && o.title.trim()) row.title = o.title.trim();
+    if (typeof o.note === "string" && o.note.trim()) row.note = o.note.trim();
+    out.push(row);
+  }
+  return out.length ? out : undefined;
+}
 
 function projectTypeFromTitle(title: string): ServiceCategory {
   const t = title.toLowerCase();
@@ -65,6 +96,13 @@ export type ElitkaProjectPageData = {
   passportSnapshot?: CompletedProject["passportSnapshot"];
   elitkaFacts?: ElitkaObjectFacts;
   galleryImageUrls: string[];
+  /** Цены из строки списка elitka (когда в detail нет price_usd/price_kgs за м²). */
+  listPriceUsdM2?: string;
+  listPriceKgsM2?: string;
+  /** Цены для показа: деталь приоритетнее списка. */
+  displayPriceUsdM2?: string;
+  displayPriceKgsM2?: string;
+  crossListings?: ProjectCrossListing[];
 };
 
 function objectToPageData(
@@ -109,6 +147,21 @@ function objectToPageData(
     undefined;
   const galleryImageUrls = elitkaObjectImageUrls(oid, mainForGallery, dRecord?.images ?? null, 16);
 
+  const listUsd = typeof o.price_usd_m2 === "string" ? o.price_usd_m2.trim() : "";
+  const listKgs = typeof o.price_kgs_m2 === "string" ? o.price_kgs_m2.trim() : "";
+  const hasListUsd = listUsd && listUsd !== "0";
+  const hasListKgs = listKgs && listKgs !== "0";
+
+  const detailUsd = elitkaFacts?.detailPriceUsd != null ? String(elitkaFacts.detailPriceUsd).trim() : "";
+  const detailKgs = elitkaFacts?.detailPriceKgs != null ? String(elitkaFacts.detailPriceKgs).trim() : "";
+  const hasDetailUsd = detailUsd && detailUsd !== "0";
+  const hasDetailKgs = detailKgs && detailKgs !== "0";
+
+  const crossBlock = merged.sources.project_cross_listings;
+  const crossRaw =
+    crossBlock?.by_elitka_object_id?.[String(oid)] ?? crossBlock?.by_elitka_object_id?.[`${oid}`];
+  const crossListings = normalizeCrossListings(crossRaw);
+
   return {
     projectId: `elitka-${oid}`,
     scrapedAt,
@@ -131,6 +184,11 @@ function objectToPageData(
     passportSnapshot,
     elitkaFacts,
     galleryImageUrls,
+    listPriceUsdM2: hasListUsd ? listUsd : undefined,
+    listPriceKgsM2: hasListKgs ? listKgs : undefined,
+    displayPriceUsdM2: hasDetailUsd ? detailUsd : hasListUsd ? listUsd : undefined,
+    displayPriceKgsM2: hasDetailKgs ? detailKgs : hasListKgs ? listKgs : undefined,
+    crossListings,
   };
 }
 

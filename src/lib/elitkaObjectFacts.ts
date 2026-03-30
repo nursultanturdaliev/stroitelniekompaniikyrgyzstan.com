@@ -263,6 +263,17 @@ export function buildElitkaObjectFactsFromDetail(
 
   if (d.labels != null && d.labels !== "") facts.labels = d.labels;
 
+  const desc = str(d.description_text);
+  if (desc) facts.descriptionText = desc;
+
+  const cl = str(d.client);
+  if (cl) facts.catalogClient = cl;
+  const perf = str(d.performer);
+  if (perf) facts.catalogPerformer = perf;
+  if (d.approved === true) facts.catalogApproved = true;
+  if (d.safe === true) facts.catalogSafe = true;
+  if (d.is_active === true || d.is_active === false) facts.catalogIsActive = d.is_active;
+
   return Object.keys(facts).length ? facts : undefined;
 }
 

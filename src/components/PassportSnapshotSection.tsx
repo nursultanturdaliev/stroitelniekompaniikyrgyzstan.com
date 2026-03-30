@@ -25,6 +25,7 @@ function sortEntries(fields: Record<string, string>): [string, string][] {
 export default function PassportSnapshotSection({
   snapshot,
   compact,
+  passportUrl,
 }: {
   passportUrl?: string;
   snapshot?: CompletedProject["passportSnapshot"];
@@ -59,6 +60,18 @@ export default function PassportSnapshotSection({
       )}
       {compact && restCount > 0 && (
         <p className="mt-2 text-gray-500">Ещё {restCount} полей — см. страницу объекта или официальный сайт.</p>
+      )}
+      {compact && passportUrl && (
+        <p className="mt-3">
+          <a
+            href={passportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[var(--steel-blue)] font-medium hover:underline text-xs"
+          >
+            Открыть полную страницу паспорта на minstroy.gov.kg
+          </a>
+        </p>
       )}
       {!compact && entries.length === 0 && !snapshot.parseError && (
         <p className="text-gray-500">Поля на странице не распознаны (возможно, изменилась вёрстка сайта).</p>

@@ -59,6 +59,11 @@ function collectSummaryRows(f: ElitkaObjectFacts): Row[] {
   add("ID района (elitka)", f.districtId);
   add("Цена $/м² (деталь)", f.detailPriceUsd);
   add("Цена сом/м² (деталь)", f.detailPriceKgs);
+  add("Заказчик (поле каталога)", f.catalogClient);
+  add("Генподрядчик (поле каталога)", f.catalogPerformer);
+  add("Одобрено в каталоге", f.catalogApproved);
+  add("Метка «безопасно» (каталог)", f.catalogSafe);
+  if (f.catalogIsActive !== undefined) add("Объект активен в каталоге", f.catalogIsActive);
   add("Карточка создана", f.createdAt);
   add("Карточка обновлена", f.updatedAt);
   if (f.isPromoted) add("Продвижение в каталоге", "да");
@@ -78,13 +83,17 @@ export default function ElitkaObjectFactsSection({
   facts,
   objectId,
   compact,
+  tiered,
 }: {
   facts: ElitkaObjectFacts;
   objectId: number;
   compact?: boolean;
+  /** Документы и связанные объекты выше; остальное — под заголовком «Полные поля каталога». */
+  tiered?: boolean;
 }) {
+  const effectiveCompact = tiered ? false : Boolean(compact);
   const summary = collectSummaryRows(facts);
-  const summaryShow = compact ? summary.slice(0, 8) : summary;
+  const summaryShow = effectiveCompact ? summary.slice(0, 8) : summary;
 
   const roomEntries = facts.roomCounts
     ? (Object.entries(facts.roomCounts) as Array<[keyof typeof ELITKA_ROOM_COUNT_LABELS, number]>)
@@ -103,9 +112,9 @@ export default function ElitkaObjectFactsSection({
     });
   }
 
-  const progress = facts.constructionProgress?.slice(0, compact ? 3 : 40) ?? [];
-  const apts = facts.apartments?.slice(0, compact ? 0 : 30) ?? [];
-  const chars = facts.characteristics?.slice(0, compact ? 6 : 200) ?? [];
+  const progress = facts.constructionProgress?.slice(0, effectiveCompact ? 3 : 40) ?? [];
+  const apts = facts.apartments?.slice(0, effectiveCompact ? 0 : 30) ?? [];
+  const chars = facts.characteristics?.slice(0, effectiveCompact ? 6 : 200) ?? [];
 
   if (
     !summary.length &&
@@ -141,9 +150,64 @@ export default function ElitkaObjectFactsSection({
         </p>
       )}
 
+      {tiered && docLinks.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[var(--charcoal)] mb-2">Документы и планировки (каталог)</h3>
+          <ul className="text-sm space-y-1">
+            {docLinks.map(({ label, href }) => (
+              <li key={label}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--steel-blue)] hover:underline"
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tiered && facts.relatedBuildings && facts.relatedBuildings.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold text-[var(--charcoal)] mb-2">Связанные объекты</h3>
+          <ul className="text-sm text-[var(--slate-blue)] space-y-2">
+            {facts.relatedBuildings.map((r) => (
+              <li key={r.id}>
+                <Link href={`/projects/elitka-${r.id}/`} className="text-[var(--steel-blue)] hover:underline font-medium">
+                  {r.title}
+                </Link>
+                {r.address && <span className="text-gray-500"> — {r.address}</span>}
+                {r.gosstroy_registry && (
+                  <>
+                    {" · "}
+                    <a
+                      href={r.gosstroy_registry}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[var(--steel-blue)] hover:underline"
+                    >
+                      паспорт
+                    </a>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {tiered && (summaryShow.length > 0 || roomEntries.length > 0 || chars.length > 0 || progress.length > 0 || apts.length > 0) && (
+        <h3 className="text-sm font-semibold text-[var(--charcoal)] mb-3 border-t border-gray-100 pt-5">
+          Полные поля каталога
+        </h3>
+      )}
+
       {summaryShow.length > 0 && (
         <div className="mb-6">
-          <h3 className="text-sm font-semibold text-[var(--charcoal)] mb-2">Основное</h3>
+          <h3 className="text-sm font-semibold text-[var(--charcoal)] mb-2">{tiered ? "Сводка полей" : "Основное"}</h3>
           <dl className="text-sm text-[var(--slate-blue)] grid gap-x-4 gap-y-1 sm:grid-cols-2">
             {summaryShow.map(({ label, value }) => (
               <div key={label} className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-1">
@@ -168,7 +232,7 @@ export default function ElitkaObjectFactsSection({
         </div>
       )}
 
-      {docLinks.length > 0 && (
+      {!tiered && docLinks.length > 0 && (
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-[var(--charcoal)] mb-2">Документы и файлы (каталог)</h3>
           <ul className="text-sm space-y-1">
@@ -247,7 +311,7 @@ export default function ElitkaObjectFactsSection({
         </div>
       )}
 
-      {facts.relatedBuildings && facts.relatedBuildings.length > 0 && (
+      {!tiered && facts.relatedBuildings && facts.relatedBuildings.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-[var(--charcoal)] mb-2">Связанные объекты</h3>
           <ul className="text-sm text-[var(--slate-blue)] space-y-2">
