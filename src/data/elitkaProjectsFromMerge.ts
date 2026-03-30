@@ -99,6 +99,8 @@ export type ElitkaProjectListItem = {
   thumbUrl: string | null;
   plannedFinishDisplay?: string;
   projectType: ServiceCategory;
+  lat?: number;
+  lng?: number;
 };
 
 function parseUsdM2(raw: string | undefined): number | null {
@@ -148,6 +150,8 @@ function pageDataToListItem(full: ElitkaProjectPageData, o: ElitkaObjectJson): E
     thumbUrl: full.galleryImageUrls[0] ?? null,
     plannedFinishDisplay: full.plannedFinishDisplay,
     projectType: full.projectType,
+    lat: full.lat,
+    lng: full.lng,
   };
 }
 

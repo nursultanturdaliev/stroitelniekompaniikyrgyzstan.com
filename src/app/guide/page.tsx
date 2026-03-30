@@ -96,6 +96,9 @@ export default function GuidePage() {
           <Link href="/companies/" className="btn-secondary">
             Каталог компаний
           </Link>
+          <Link href="/glossary/" className="btn-secondary">
+            Словарь терминов
+          </Link>
           <Link href="/faq/" className="btn-secondary">
             Частые вопросы
           </Link>

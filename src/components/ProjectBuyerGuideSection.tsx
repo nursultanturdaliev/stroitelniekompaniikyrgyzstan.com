@@ -44,6 +44,12 @@ export default function ProjectBuyerGuideSection({
         </Link>
         <span className="text-gray-500 text-xs"> — пошаговый ориентир по официальным источникам.</span>
       </p>
+      <p className="mt-2 text-sm">
+        <Link href="/glossary/" className="text-[var(--steel-blue)] font-medium hover:underline">
+          Словарь терминов
+        </Link>
+        <span className="text-gray-500 text-xs"> — паспорт объекта, дольщик, ЖК и др.</span>
+      </p>
       <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
         {passportUrl && (
           <li>

@@ -136,6 +136,9 @@ export default function ProjectsIndexClient({
           .
         </p>
         <div className="flex flex-wrap gap-3 mt-4">
+          <Link href="/projects/map/" className="btn-primary text-sm">
+            Карта объектов
+          </Link>
           <Link href="/verify/" className="btn-secondary text-sm">
             Проверка за 5 минут
           </Link>

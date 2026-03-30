@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/types/", label: "Типы работ" },
   { href: "/negotiator/", label: "AI-переговорщик" },
   { href: "/guide/", label: "Гид" },
+  { href: "/glossary/", label: "Словарь" },
   { href: "/verify/", label: "Проверка" },
   { href: "/pricing/", label: "Цены" },
   { href: "/faq/", label: "FAQ" },
