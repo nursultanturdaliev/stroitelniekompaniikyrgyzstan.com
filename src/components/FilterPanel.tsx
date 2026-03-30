@@ -103,6 +103,8 @@ interface FilterPanelProps {
   totalCount: number;
   isMobileOpen: boolean;
   onMobileClose: () => void;
+  /** Не показывать эти типы в блоке «Тип компании» (например агентства на странице застройщиков). */
+  omitCompanyTypes?: CompanyType[];
 }
 
 function Section({
@@ -146,6 +148,7 @@ export default function FilterPanel({
   totalCount,
   isMobileOpen,
   onMobileClose,
+  omitCompanyTypes = [],
 }: FilterPanelProps) {
   const update = (partial: Partial<CompanyFilterState>) => onChange({ ...filters, ...partial });
 
@@ -212,7 +215,7 @@ export default function FilterPanel({
 
       <Section title="Тип компании">
         <div className="flex flex-wrap gap-2">
-          {allCompanyTypes.map((t) => (
+          {allCompanyTypes.filter((t) => !omitCompanyTypes.includes(t)).map((t) => (
             <button
               key={t}
               type="button"

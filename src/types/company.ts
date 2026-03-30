@@ -114,6 +114,8 @@ export interface CompletedProject {
   elitkaObjectId?: number;
   /** Человекочитаемый статус по данным elitka.kg */
   elitkaStatusLabel?: string;
+  /** Сырой код статуса строительства из API elitka (для агрегатов на карточке компании). */
+  elitkaConstructionStatusCode?: string;
   plannedStartDisplay?: string;
   plannedFinishDisplay?: string;
   initialPlannedFinishDisplay?: string;
@@ -158,6 +160,8 @@ export interface ConstructionCompany {
   hasLicense: boolean;
   /** Совпадение с чёрным списком (ур. 6) реестра Минстроя по данным автоматического сопоставления — не юридический вывод */
   minstroyBlacklistWarning?: boolean;
+  /** Число строк реестра Минстроя, сопоставленных по названию/ИНН при сборке выгрузки (не официальное заключение). */
+  minstroyRegistryMatchCount?: number;
   licenseInfo?: string;
   teamSize?: string;
   highlights: string[];

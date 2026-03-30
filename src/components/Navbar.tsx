@@ -6,6 +6,8 @@ import Link from "next/link";
 const navLinks = [
   { href: "/blacklist/", label: "Чёрный список" },
   { href: "/companies/", label: "Компании" },
+  { href: "/agencies/", label: "Агентства" },
+  { href: "/remont/", label: "Ремонт" },
   { href: "/types/", label: "Типы работ" },
   { href: "/negotiator/", label: "AI-переговорщик" },
   { href: "/guide/", label: "Гид" },

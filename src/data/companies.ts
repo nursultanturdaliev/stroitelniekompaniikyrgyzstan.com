@@ -1,7 +1,38 @@
-import type { ConstructionCompany } from "@/types/company";
+import type { CompanyType, ConstructionCompany } from "@/types/company";
 import { scrapedMergedCompanies } from "@/data/scrapedMergedCompanies";
 
 export type { ConstructionCompany, CompanyType, ServiceCategory, PriceRangeTier } from "@/types/company";
+
+/** Типы для фильтра на страницах, где в выборке нет агентств (каталог застройщиков). */
+export const CONSTRUCTION_CATALOG_TYPES: CompanyType[] = [
+  "Строительная компания",
+  "Застройщик",
+  "Проектная организация",
+  "Дорожное строительство",
+];
+
+/** Типы, не относящиеся к агентствам — скрываем в фильтре на /agencies/ (включая ремонт — он на /remont/). */
+export const NON_AGENCY_CATALOG_TYPES: CompanyType[] = [
+  ...CONSTRUCTION_CATALOG_TYPES,
+  "Ремонтная компания",
+];
+
+/** Все типы, кроме «Ремонтная компания» — для фильтра на /remont/. */
+export const NON_REPAIR_COMPANY_TYPES: CompanyType[] = [
+  "Строительная компания",
+  "Застройщик",
+  "Агентство недвижимости",
+  "Проектная организация",
+  "Дорожное строительство",
+];
+
+export function isRealEstateAgency(c: ConstructionCompany): boolean {
+  return c.type.includes("Агентство недвижимости");
+}
+
+export function isRepairCompany(c: ConstructionCompany): boolean {
+  return c.type.includes("Ремонтная компания");
+}
 
 const curatedCompanies: ConstructionCompany[] = [
   {
@@ -278,4 +309,16 @@ export const companies: ConstructionCompany[] = [...curatedCompanies, ...scraped
 
 export function getCompanyBySlug(slug: string): ConstructionCompany | undefined {
   return companies.find((c) => c.slug === slug);
+}
+
+export function getConstructionCompanies(): ConstructionCompany[] {
+  return companies.filter((c) => !isRealEstateAgency(c) && !isRepairCompany(c));
+}
+
+export function getAgencyCompanies(): ConstructionCompany[] {
+  return companies.filter(isRealEstateAgency);
+}
+
+export function getRepairCompanies(): ConstructionCompany[] {
+  return companies.filter(isRepairCompany);
 }

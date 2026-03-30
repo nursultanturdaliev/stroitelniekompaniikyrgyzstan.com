@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useMemo, useCallback } from "react";
 import CompanyCard from "@/components/CompanyCard";
 import CompanyCardList from "@/components/CompanyCardList";
@@ -9,7 +10,16 @@ import FilterPanel, {
   defaultCompanyFilters,
 } from "@/components/FilterPanel";
 import ActiveFilterTags from "@/components/ActiveFilterTags";
-import { companies, type ConstructionCompany } from "@/data/companies";
+import {
+  companies,
+  isRealEstateAgency,
+  isRepairCompany,
+  NON_AGENCY_CATALOG_TYPES,
+  NON_REPAIR_COMPANY_TYPES,
+  type ConstructionCompany,
+} from "@/data/companies";
+
+export type CompaniesCatalogVariant = "construction" | "agencies" | "repair";
 
 const priceOrder: Record<string, number> = { budget: 1, mid: 2, premium: 3, luxury: 4 };
 
@@ -70,7 +80,9 @@ function initialSearchQuery(): string {
   return new URLSearchParams(window.location.search).get("q") ?? "";
 }
 
-export default function CompaniesCatalog() {
+type Props = { variant?: CompaniesCatalogVariant };
+
+export default function CompaniesCatalog({ variant = "construction" }: Props) {
   const [filters, setFilters] = useState<CompanyFilterState>(() => ({
     ...defaultCompanyFilters,
     searchQuery: initialSearchQuery(),
@@ -81,8 +93,14 @@ export default function CompaniesCatalog() {
 
   const updateFilters = useCallback((newFilters: CompanyFilterState) => setFilters(newFilters), []);
 
+  const pool = useMemo(() => {
+    if (variant === "agencies") return companies.filter(isRealEstateAgency);
+    if (variant === "repair") return companies.filter(isRepairCompany);
+    return companies.filter((c) => !isRealEstateAgency(c) && !isRepairCompany(c));
+  }, [variant]);
+
   const filteredCompanies = useMemo(() => {
-    const filtered = companies.filter((c) => {
+    const filtered = pool.filter((c) => {
       if (filters.searchQuery) {
         const q = filters.searchQuery.toLowerCase();
         const searchable = `${c.name} ${c.tagline} ${c.services.join(" ")} ${c.specializations.join(" ")} ${c.type.join(" ")} ${c.location.address || ""} ${c.location.city}`.toLowerCase();
@@ -115,7 +133,7 @@ export default function CompaniesCatalog() {
     });
 
     return sortCompanies(filtered, filters.sortBy);
-  }, [filters]);
+  }, [filters, pool]);
 
   const activeFilterCount = [
     filters.companyTypes.length > 0,
@@ -131,21 +149,61 @@ export default function CompaniesCatalog() {
   ].filter(Boolean).length;
 
   const stats = useMemo(() => {
-    const licensed = companies.filter((c) => c.hasLicense).length;
-    return { total: companies.length, licensed };
-  }, []);
+    const licensed = pool.filter((c) => c.hasLicense).length;
+    return { poolSize: pool.length, licensed, totalAll: companies.length };
+  }, [pool]);
+
+  const isAgencies = variant === "agencies";
+  const isRepair = variant === "repair";
 
   return (
     <>
       <section className="bg-[var(--deep-navy)] py-12 sm:py-16">
         <div className="container-custom">
           <h1 className="font-heading text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
-            Застройщики, подрядчики и агентства Кыргызстана
+            {isAgencies
+              ? "Агентства недвижимости Кыргызстана"
+              : isRepair
+                ? "Ремонтные компании"
+                : "Застройщики и строительные компании"}
           </h1>
-          <p className="text-white/60 max-w-2xl text-sm sm:text-base mb-6">
-            {stats.total} компаний в каталоге (в т.ч. риелторы с house.kg и застройщики с elitka.kg). {stats.licensed} с
-            отметкой о лицензии по данным карточек. Фильтр по типу помогает отделить агентства недвижимости от
-            строительных организаций.
+          <p className="text-white/60 max-w-2xl text-sm sm:text-base mb-4">
+            {isAgencies ? (
+              <>
+                {stats.poolSize} агентств и риелторских профилей в каталоге (в т.ч. house.kg). {stats.licensed} с
+                отметкой о лицензии по данным карточек. Застройщиков и подрядчиков смотрите в{" "}
+                <Link href="/companies/" className="text-white underline hover:text-white/90">
+                  каталоге компаний
+                </Link>
+                .
+              </>
+            ) : isRepair ? (
+              <>
+                {stats.poolSize} компаний с типом «Ремонтная компания» в каталоге. {stats.licensed} с отметкой о лицензии
+                по данным карточек. Застройщиков — в{" "}
+                <Link href="/companies/" className="text-white underline hover:text-white/90">
+                  каталоге компаний
+                </Link>
+                , агентства — в{" "}
+                <Link href="/agencies/" className="text-white underline hover:text-white/90">
+                  разделе агентств
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                {stats.poolSize} застройщиков и подрядчиков в этом каталоге (всего карточек в базе: {stats.totalAll}).
+                {stats.licensed} с отметкой о лицензии по данным карточек.{" "}
+                <Link href="/agencies/" className="text-white underline hover:text-white/90">
+                  Агентства недвижимости
+                </Link>
+                ,{" "}
+                <Link href="/remont/" className="text-white underline hover:text-white/90">
+                  ремонтные компании
+                </Link>{" "}
+                — отдельные разделы.
+              </>
+            )}
           </p>
           <div className="max-w-lg">
             <div className="relative">
@@ -194,9 +252,16 @@ export default function CompaniesCatalog() {
                 filters={filters}
                 onChange={updateFilters}
                 resultCount={filteredCompanies.length}
-                totalCount={companies.length}
+                totalCount={pool.length}
                 isMobileOpen={mobileFiltersOpen}
                 onMobileClose={() => setMobileFiltersOpen(false)}
+                omitCompanyTypes={
+                  variant === "construction"
+                    ? ["Агентство недвижимости", "Ремонтная компания"]
+                    : variant === "agencies"
+                      ? [...NON_AGENCY_CATALOG_TYPES]
+                      : [...NON_REPAIR_COMPANY_TYPES]
+                }
               />
             </div>
 
@@ -226,7 +291,8 @@ export default function CompaniesCatalog() {
 
                   <p className="text-sm text-[var(--slate-blue)]">
                     <span className="font-semibold text-[var(--charcoal)]">{filteredCompanies.length}</span> из{" "}
-                    {companies.length} компаний
+                    {pool.length}{" "}
+                    {isAgencies ? "агентств" : isRepair ? "компаний по ремонту" : "компаний"}
                   </p>
                 </div>
 

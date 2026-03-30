@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { companies, getCompanyBySlug } from "@/data/companies";
+import { companies, getCompanyBySlug, isRealEstateAgency, isRepairCompany } from "@/data/companies";
 import { minstroyRegistrySummary } from "@/data/scrapedMergedCompanies";
+import { computeCompanyInsights } from "@/lib/companyInsights";
+import CompanyInsightsPanel from "@/components/CompanyInsightsPanel";
 import { getExternalLinksForCompany, getReviewsForCompany } from "@/data/reviews";
 import ContactCard from "@/components/ContactCard";
 import ReviewSection from "@/components/ReviewSection";
@@ -40,6 +42,11 @@ export default async function CompanyPage({ params }: Props) {
 
   const reviews = getReviewsForCompany(company.id);
   const externalLinks = getExternalLinksForCompany(company.id);
+  const companyInsights = computeCompanyInsights(company, minstroyRegistrySummary.officialUrl);
+  const agencyProfile = isRealEstateAgency(company);
+  const repairProfile = isRepairCompany(company);
+  const catalogParentHref = agencyProfile ? "/agencies/" : repairProfile ? "/remont/" : "/companies/";
+  const catalogParentLabel = agencyProfile ? "Агентства" : repairProfile ? "Ремонт" : "Компании";
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -82,8 +89,8 @@ export default async function CompanyPage({ params }: Props) {
               Главная
             </Link>
             <span className="mx-2">/</span>
-            <Link href="/companies/" className="hover:text-white">
-              Компании
+            <Link href={catalogParentHref} className="hover:text-white">
+              {catalogParentLabel}
             </Link>
             <span className="mx-2">/</span>
             <span className="text-white">{company.name}</span>
@@ -145,6 +152,8 @@ export default async function CompanyPage({ params }: Props) {
       <section className="section-padding bg-[var(--soft-white)]">
         <div className="container-custom grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
+            {companyInsights && <CompanyInsightsPanel insights={companyInsights} />}
+
             <div className="bg-white rounded-xl p-6 border border-gray-100">
               <h2 className="font-heading text-xl font-semibold text-[var(--charcoal)] mb-4">О компании</h2>
               <div className="prose prose-sm max-w-none text-[var(--slate-blue)] whitespace-pre-line">{company.description}</div>

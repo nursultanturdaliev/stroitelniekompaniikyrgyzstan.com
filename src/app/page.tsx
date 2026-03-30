@@ -6,13 +6,13 @@ import SectionTitle from "@/components/SectionTitle";
 import CompanyCard from "@/components/CompanyCard";
 import TypeCard from "@/components/TypeCard";
 import DailyUpdatesFeed from "@/components/DailyUpdatesFeed";
-import { companies } from "@/data/companies";
+import { companies, isRealEstateAgency, isRepairCompany } from "@/data/companies";
 import { constructionTypes } from "@/data/constructionTypes";
 import { quickFacts, processSteps } from "@/data/practicalInfo";
 import dailyUpdatesData from "@/data/dailyUpdates.json";
 
 export default function Home() {
-  const featured = companies.slice(0, 6);
+  const featured = companies.filter((c) => !isRealEstateAgency(c) && !isRepairCompany(c)).slice(0, 6);
   const typePreview = constructionTypes.slice(0, 3);
 
   return (
@@ -41,17 +41,23 @@ export default function Home() {
         <div className="container-custom">
           <SectionTitle
             subtitle="Каталог"
-            title="Компании и агентства"
-            description="Застройщики, подрядчики и агентства недвижимости — услуги, лицензии по данным источников, ориентиры по ценам"
+            title="Застройщики и подрядчики"
+            description="Строительные компании и застройщики — услуги, лицензии по данным источников, ориентиры по ценам. Агентства недвижимости — в отдельном разделе."
           />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featured.map((company, index) => (
               <CompanyCard key={company.id} company={company} featured={index === 0} />
             ))}
           </div>
-          <div className="text-center mt-10">
+          <div className="text-center mt-10 flex flex-wrap gap-4 justify-center">
             <Link href="/companies/" className="btn-primary">
               Все компании
+            </Link>
+            <Link href="/agencies/" className="btn-secondary">
+              Агентства недвижимости
+            </Link>
+            <Link href="/remont/" className="btn-secondary">
+              Ремонт
             </Link>
           </div>
         </div>

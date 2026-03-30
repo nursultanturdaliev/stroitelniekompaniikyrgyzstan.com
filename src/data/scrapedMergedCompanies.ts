@@ -13,6 +13,7 @@ import {
 } from "@/lib/elitkaSchedule";
 import { buildElitkaObjectFactsFromDetail } from "@/lib/elitkaObjectFacts";
 import { elitkaObjectImageUrls } from "@/lib/elitkaMedia";
+import { inferCityFromAddress } from "@/lib/geoKg";
 import { passportEntryForUrl } from "@/lib/minstroyPassportSnapshot";
 import mergedRaw from "../../scraped/merged-companies.json";
 
@@ -289,20 +290,6 @@ function priceTierFromUsd(values: number[]): PriceRangeTier {
   return "luxury";
 }
 
-function inferCityFromAddress(address: string): string {
-  const a = address.toLowerCase();
-  if (a.includes("бишкек") || a.includes("bishkek")) return "Бишкек";
-  if (a.includes("ош") && !a.includes("орто")) return "Ош";
-  if (a.includes("кант")) return "Кант";
-  if (a.includes("токмок")) return "Токмок";
-  if (a.includes("каракол")) return "Каракол";
-  if (a.includes("орто-сай") || a.includes("орто сай")) return "с. Орто-Сай";
-  if (a.includes("беш кунгей") || a.includes("беш-кунгей")) return "с. Беш-Кунгей";
-  if (a.includes("кок-джар") || a.includes("кок джар")) return "с. Кок-Джар";
-  if (a.includes("джал")) return "Джал";
-  return "Бишкек";
-}
-
 function projectTypeFromTitle(title: string): ServiceCategory {
   const t = title.toLowerCase();
   if (t.includes("жк") || t.includes("комплекс")) return "Многоэтажное строительство";
@@ -369,6 +356,7 @@ function elitkaObjectToProject(o: ElitkaObject): CompletedProject {
     key: oid != null ? `elitka-${oid}` : `${o.slug}-${o.title}`.slice(0, 80),
     elitkaObjectId: oid,
     elitkaStatusLabel: elitkaConstructionStatusLabel(statusRaw),
+    elitkaConstructionStatusCode: statusRaw,
     plannedStartDisplay: formatIsoDateRu(startIso),
     plannedFinishDisplay: formatIsoDateRu(finishIso),
     initialPlannedFinishDisplay:
@@ -650,6 +638,7 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
     ],
     sourceVerified: [...sources],
     minstroyBlacklistWarning: Boolean(minNotes?.hasBlacklist),
+    minstroyRegistryMatchCount: minRows.length,
   };
 }
 
@@ -720,6 +709,7 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
     highlights,
     sourceVerified: [...sources],
     minstroyBlacklistWarning: Boolean(minNotes?.hasBlacklist),
+    minstroyRegistryMatchCount: minRows.length,
   };
 }
 
