@@ -1,7 +1,25 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { processSteps } from "@/data/practicalInfo";
+import { priceCurrencyGuideSection } from "@/data/priceCurrencyGuide";
 import { registryGuideDisclaimer, registryGuideSections } from "@/data/registryGuide";
+
+function EmText({ text }: { text: string }) {
+  const parts = text.split(/\*\*/);
+  return (
+    <>
+      {parts.map((p, i) =>
+        i % 2 === 1 ? (
+          <strong key={i} className="text-[var(--charcoal)]">
+            {p}
+          </strong>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </>
+  );
+}
 
 export const metadata: Metadata = {
   title: "Как выбрать подрядчика",
@@ -32,6 +50,21 @@ export default function GuidePage() {
             </li>
           ))}
         </ol>
+
+        <section
+          id={priceCurrencyGuideSection.id}
+          className="mt-12 p-6 bg-white rounded-xl border border-gray-100 scroll-mt-24"
+        >
+          <h2 className="font-heading text-xl font-semibold text-[var(--charcoal)] mb-3">{priceCurrencyGuideSection.title}</h2>
+          <div className="text-sm text-[var(--slate-blue)] space-y-3 mb-4">
+            {priceCurrencyGuideSection.paragraphs.map((p, i) => (
+              <p key={i}>
+                <EmText text={p} />
+              </p>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 border-t border-gray-100 pt-3">{priceCurrencyGuideSection.disclaimer}</p>
+        </section>
 
         <div className="mt-12 p-6 bg-white rounded-xl border border-gray-100">
           <h2 className="font-heading text-xl font-semibold text-[var(--charcoal)] mb-3">Дополнительно</h2>
@@ -101,6 +134,12 @@ export default function GuidePage() {
           </Link>
           <Link href="/glossary/" className="btn-secondary">
             Словарь терминов
+          </Link>
+          <Link href="/buyers/first-apartment/" className="btn-secondary">
+            Первая квартира
+          </Link>
+          <Link href="/buyers/sales-visit/" className="btn-secondary">
+            Визит в офис
           </Link>
           <Link href="/faq/" className="btn-secondary">
             Частые вопросы

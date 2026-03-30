@@ -3,12 +3,12 @@ import Link from "next/link";
 import { regionalNotes } from "@/data/regionalNotes";
 
 export const metadata: Metadata = {
-  title: "Регионы: новостройки и проверка",
+  title: "Новостройки Бишкек, Ош и регионы — ориентиры",
   description:
-    "Краткие заметки по Бишкеку, Ошу и регионам для покупателей жилья. Ориентиры, не юридическая консультация.",
+    "Новостройки Бишкек и других городов: как читать каталог, фильтры elitka и проверка паспорта объекта. Не юридическая консультация.",
   openGraph: {
-    title: "Регионы — каталог новостроек КР",
-    description: "Как пользоваться фильтрами и официальными источниками в разных городах.",
+    title: "Регионы — новостройки Кыргызстана",
+    description: "Ориентиры по городам: каталог, словарь терминов и ссылки на официальные источники.",
   },
 };
 
@@ -17,9 +17,24 @@ export default function RegionsPage() {
     <article className="section-padding bg-[var(--soft-white)] min-h-[60vh]">
       <div className="container-custom max-w-3xl">
         <h1 className="font-heading text-3xl md:text-4xl font-bold text-[var(--charcoal)] mb-3">Регионы</h1>
-        <p className="text-[var(--slate-blue)] mb-8">
-          Практические ориентиры для чтения каталога. Условия рынка и юридические нюансы уточняйте у профильных специалистов и по
-          официальным сайтам ведомств.
+        <p className="text-[var(--slate-blue)] mb-4">
+          Практические ориентиры для чтения каталога новостроек (в т.ч. Бишкек и Ош). Условия рынка и юридические нюансы
+          уточняйте у профильных специалистов и по официальным сайтам ведомств.
+        </p>
+        <p className="text-sm text-[var(--slate-blue)] mb-8">
+          Связанные разделы:{" "}
+          <Link href="/projects/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            каталог объектов
+          </Link>
+          ,{" "}
+          <Link href="/glossary/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            словарь
+          </Link>
+          ,{" "}
+          <Link href="/methodology/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            как собираются данные
+          </Link>
+          .
         </p>
 
         <nav className="mb-10 p-4 bg-white rounded-xl border border-gray-100">
@@ -64,6 +79,9 @@ export default function RegionsPage() {
           </Link>
           <Link href="/guide/" className="btn-secondary">
             Гид
+          </Link>
+          <Link href="/methodology/" className="btn-secondary">
+            Методология
           </Link>
         </div>
       </div>

@@ -127,12 +127,28 @@ export default function ProjectsIndexClient({
     <div className="container-custom max-w-6xl pb-16">
       <header className="mb-8">
         <h1 className="font-heading text-3xl md:text-4xl font-bold text-[var(--charcoal)] mb-2">Новостройки</h1>
-        <p className="text-[var(--slate-blue)] max-w-2xl">
+        <p className="text-[var(--slate-blue)] max-w-3xl">
           Объекты из открытого каталога elitka.kg: фильтры, подборка в браузере и сравнение до {MAX_COMPARE} позиций.
-          Данные не заменяют проверку на{" "}
+          У части карточек есть ссылка на <strong>паспорт объекта</strong> в реестре — сверяйте на{" "}
           <a href="https://minstroy.gov.kg" className="text-[var(--steel-blue)] underline" target="_blank" rel="noopener noreferrer">
             minstroy.gov.kg
           </a>
+          . Как мы собираем данные:{" "}
+          <Link href="/methodology/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            методология
+          </Link>
+          ; термины —{" "}
+          <Link href="/glossary/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            словарь
+          </Link>
+          ; по городам —{" "}
+          <Link href="/regions/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            регионы
+          </Link>
+          ; чеклист —{" "}
+          <Link href="/verify/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            проверка
+          </Link>
           .
         </p>
         <div className="flex flex-wrap gap-3 mt-4">
@@ -246,6 +262,9 @@ export default function ProjectsIndexClient({
               <Link href={compareHref} className="btn-primary text-sm py-2 px-4">
                 Сравнить ({shortlist.length})
               </Link>
+              <Link href="/verify/" className="btn-secondary text-sm py-2 px-4">
+                Проверка по чеклисту
+              </Link>
               <button type="button" onClick={shareCompareUrl} className="btn-secondary text-sm py-2 px-4">
                 {copied ? "Ссылка скопирована" : "Скопировать ссылку на сравнение"}
               </button>
@@ -265,7 +284,11 @@ export default function ProjectsIndexClient({
         {shortlist.length > 0 && (
           <p className="text-xs text-gray-500">
             Подборка хранится в этом браузере (до {MAX_COMPARE} объектов). Ссылка с параметром{" "}
-            <code className="bg-gray-100 px-1 rounded">ids=</code> позволяет поделиться сравнением.
+            <code className="bg-gray-100 px-1 rounded">ids=</code> позволяет поделиться сравнением. Перед бронью пройдите{" "}
+            <Link href="/verify/" className="text-[var(--steel-blue)] font-medium hover:underline">
+              проверку по официальным источникам
+            </Link>
+            .
           </p>
         )}
       </div>

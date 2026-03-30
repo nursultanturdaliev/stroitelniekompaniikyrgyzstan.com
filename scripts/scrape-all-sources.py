@@ -10,6 +10,7 @@
 
 Чтобы сгенерировать diff для сайта: скопируйте предыдущую выгрузку в scraped/merged-companies.prev.json,
 затем npm run merge:diff (скрипт scripts/diff-merged-companies.py → src/data/mergeChangelog.json).
+Полный операционный чеклист: content-ops/RELEASE-CHECKLIST.md
 
   pip install -r scripts/requirements-scrape.txt
   python3 scripts/scrape-all-sources.py

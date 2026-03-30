@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import DataQualityStrip, { type DataQualityStats } from "@/components/DataQualityStrip";
 import MergeChangelogSection from "@/components/MergeChangelogSection";
+import dataQualityStatsRaw from "@/data/dataQualityStats.json";
 import mergeChangelogRaw from "@/data/mergeChangelog.json";
 import type { MergeChangelogData } from "@/types/mergeChangelog";
 
@@ -15,6 +17,7 @@ export const metadata: Metadata = {
 };
 
 const data = mergeChangelogRaw as MergeChangelogData;
+const dataQualityStats = dataQualityStatsRaw as DataQualityStats;
 
 export default function UpdatesPage() {
   return (
@@ -36,6 +39,7 @@ export default function UpdatesPage() {
             скрипту <code className="text-xs bg-white px-1 rounded border">scripts/diff-merged-companies.py</code> и в workflow
             GitHub Actions.
           </p>
+          <DataQualityStrip stats={dataQualityStats} />
         </div>
       </div>
       <MergeChangelogSection data={data} />

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ElitkaObjectFacts } from "@/types/company";
 
 function fmt(v: unknown): string {
@@ -90,7 +91,12 @@ export default function ProjectBuyerSnapshot({
         <span className="text-xs text-gray-500">по данным elitka.kg</span>
       </div>
       <p className="text-xs text-gray-500 mb-4">
-        Ориентиры из каталога новостроек; условия и цены подтверждайте у застройщика и в гос. реестрах.
+        Ориентиры из каталога новостроек; условия и цены подтверждайте у застройщика и в гос. реестрах. Про $/м² и оплату
+        в сомах:{" "}
+        <Link href="/guide/#price-currency" className="text-[var(--steel-blue)] font-medium hover:underline">
+          кратко в гиде
+        </Link>
+        .
       </p>
       <dl className="text-sm text-[var(--slate-blue)] grid gap-x-4 gap-y-2 sm:grid-cols-2">
         {rows.map(({ label, value }) => (

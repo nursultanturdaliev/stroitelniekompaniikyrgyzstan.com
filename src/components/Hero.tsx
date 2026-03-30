@@ -16,28 +16,40 @@ export default function Hero() {
       <div className="container-custom relative z-10 py-20">
         <div className="max-w-3xl">
           <span className="inline-block text-[var(--safety-orange)] text-sm font-semibold uppercase tracking-widest mb-6 animate-fade-in">
-            Каталог строительных компаний
+            Новостройки и застройщики Кыргызстана
           </span>
 
           <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight animate-fade-in-up">
-            Честное сравнение
-            <span className="text-[var(--safety-orange)]"> подрядчиков</span> в Кыргызстане
+            Проверьте новостройку и застройщика
+            <span className="text-[var(--safety-orange)]"> за ~10 минут</span>
           </h1>
 
           <p className="text-lg md:text-xl text-white/70 mb-10 max-w-2xl leading-relaxed animate-fade-in-up animation-delay-200">
-            Услуги, ориентиры по ценам, лицензии и отзывы — в одном месте. Гайды помогут задать правильные вопросы, а
-            AI-переговорщик подготовит вас к разговору о смете.
+            Каталог объектов из открытых данных, ссылки на паспорт Минстроя и чеклист самопроверки — без обещаний «лучшей
+            сделки». Дальше — гайды и подготовка к переговорам.
           </p>
 
           <div className="flex flex-wrap gap-4 animate-fade-in-up animation-delay-400">
-            <Link href="/companies/" className="btn-primary text-base py-3 px-8">
-              Открыть каталог
+            <Link href="/verify/" className="btn-primary text-base py-3 px-8">
+              Начать проверку
             </Link>
             <Link
-              href="/negotiator/"
+              href="/projects/"
               className="btn-secondary border-white/30 text-white hover:bg-white/10 hover:border-white/50 text-base py-3 px-8"
             >
-              AI-переговорщик
+              Каталог новостроек
+            </Link>
+            <Link
+              href="/methodology/"
+              className="text-sm font-medium text-white/80 hover:text-white self-center underline-offset-4 hover:underline"
+            >
+              Как мы собираем данные
+            </Link>
+            <Link
+              href="/buyers/first-apartment/"
+              className="text-sm font-medium text-white/80 hover:text-white self-center underline-offset-4 hover:underline"
+            >
+              Первая квартира
             </Link>
           </div>
 

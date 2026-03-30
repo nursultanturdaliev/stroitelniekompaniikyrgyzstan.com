@@ -60,6 +60,11 @@ export default function VerifyPage() {
           <span className="text-[var(--charcoal)]">Проверка за 5 минут</span>
         </nav>
 
+        <p className="text-sm text-[var(--slate-blue)] mb-4">
+          <Link href="/ky/verify/" className="text-[var(--steel-blue)] hover:underline" lang="ky">
+            Версия на кыргызском (кратко)
+          </Link>
+        </p>
         <h1 className="font-heading text-3xl md:text-4xl font-bold text-[var(--charcoal)] mb-3">Проверка за 5 минут</h1>
         <p className="text-[var(--slate-blue)] mb-8">
           Ориентир для покупателя новостройки: куда зайти и что сверить. Это не юридическая консультация и не замена

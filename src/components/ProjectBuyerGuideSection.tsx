@@ -69,6 +69,21 @@ export default function ProjectBuyerGuideSection({
           </Link>
         </li>
         <li>
+          <Link href="/guide/#price-currency" className="text-[var(--steel-blue)] font-medium hover:underline">
+            Цена $/м² и сомы
+          </Link>
+        </li>
+        <li>
+          <Link href="/buyers/first-apartment/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            Сценарий «первая квартира»
+          </Link>
+        </li>
+        <li>
+          <Link href="/buyers/sales-visit/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            Чеклист визита в офис
+          </Link>
+        </li>
+        <li>
           <Link href={negotiatorHref} className="text-[var(--steel-blue)] font-medium hover:underline">
             AI-переговорщик
           </Link>

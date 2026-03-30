@@ -1,11 +1,10 @@
-"use client";
-
 import Link from "next/link";
 import Hero from "@/components/Hero";
 import SectionTitle from "@/components/SectionTitle";
 import CompanyCard from "@/components/CompanyCard";
 import TypeCard from "@/components/TypeCard";
 import DailyUpdatesFeed from "@/components/DailyUpdatesFeed";
+import HomeFeaturedProjects from "@/components/HomeFeaturedProjects";
 import { companies, isRealEstateAgency, isRepairCompany } from "@/data/companies";
 import { constructionTypes } from "@/data/constructionTypes";
 import { quickFacts, processSteps } from "@/data/practicalInfo";
@@ -21,6 +20,8 @@ export default function Home() {
   return (
     <>
       <Hero />
+
+      <HomeFeaturedProjects />
 
       <section className="relative -mt-8 z-20 pb-8">
         <div className="container-custom">
@@ -112,6 +113,9 @@ export default function Home() {
           <div className="text-center mt-10 flex flex-wrap justify-center gap-4">
             <Link href="/guide/" className="btn-primary">
               Полный гид
+            </Link>
+            <Link href="/verify/" className="btn-secondary">
+              Проверить объект и застройщика
             </Link>
             <Link href="/negotiator/" className="btn-secondary">
               Подготовка к переговорам

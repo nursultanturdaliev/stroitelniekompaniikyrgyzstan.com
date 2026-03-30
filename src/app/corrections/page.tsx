@@ -28,6 +28,11 @@ export default function CorrectionsPage() {
           относительно <strong>публичного первоисточника</strong>, опишите её ниже. Мы не обещаем мгновенного обновления и не
           гарантируем публикацию правки — решение принимается вручную после проверки ссылки.
         </p>
+        <p className="text-sm text-[var(--slate-blue)] mb-6 bg-white border border-gray-100 rounded-xl px-4 py-3">
+          <strong className="text-[var(--charcoal)]">Ориентир по сроку ответа:</strong> стараемся ответить на обращения с
+          корректной ссылкой на первоисточник в течение <strong>до 10 рабочих дней</strong>. Это не договор и не юридическая
+          гарантия — при большой нагрузке срок может быть дольше.
+        </p>
 
         <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 text-sm text-[var(--slate-blue)] mb-8">
           <p className="font-medium text-[var(--charcoal)] mb-2">Что сюда подходит</p>
@@ -56,6 +61,9 @@ export default function CorrectionsPage() {
         <CorrectionsForm />
 
         <div className="mt-10 pt-8 border-t border-gray-100 flex flex-wrap gap-3">
+          <Link href="/methodology/" className="text-sm text-[var(--steel-blue)] hover:underline">
+            Как собираются данные
+          </Link>
           <Link href="/about/" className="text-sm text-[var(--steel-blue)] hover:underline">
             О проекте
           </Link>

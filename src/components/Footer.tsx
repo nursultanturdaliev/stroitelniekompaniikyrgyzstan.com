@@ -2,6 +2,9 @@ import Link from "next/link";
 
 const footerLinks = {
   catalog: [
+    { href: "/projects/", label: "Новостройки" },
+    { href: "/regions/", label: "Регионы" },
+    { href: "/glossary/", label: "Словарь" },
     { href: "/companies/", label: "Все компании" },
     { href: "/types/", label: "Типы работ" },
     { href: "/types/doma/", label: "Частные дома" },
@@ -9,6 +12,9 @@ const footerLinks = {
     { href: "/negotiator/", label: "AI-переговорщик" },
   ],
   info: [
+    { href: "/buyers/first-apartment/", label: "Первая квартира" },
+    { href: "/for-developers/", label: "Для застройщиков" },
+    { href: "/methodology/", label: "Как мы собираем данные" },
     { href: "/guide/", label: "Как выбрать подрядчика" },
     { href: "/pricing/", label: "Ориентиры по ценам" },
     { href: "/faq/", label: "Частые вопросы" },

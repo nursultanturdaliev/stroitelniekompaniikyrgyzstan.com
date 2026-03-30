@@ -3,11 +3,11 @@ import Link from "next/link";
 import { glossaryEntries } from "@/data/glossary";
 
 export const metadata: Metadata = {
-  title: "Словарь: новостройки и стройка",
+  title: "Паспорт объекта, ЖК и термины новостроек",
   description:
-    "Короткие пояснения терминов для покупателей жилья и заказчиков работ в Кыргызстане. Не юридические определения.",
+    "Словарь для покупателей жилья: что такое паспорт объекта Минстроя, дольщик, ЖК и др. Простой язык, не юридические определения.",
   openGraph: {
-    title: "Словарь каталога Стройка KG",
+    title: "Словарь — новостройки и стройка KG",
     description: "Паспорт объекта, лицензия, дольщик, ЖК и другие термины простым языком.",
   },
 };
@@ -25,9 +25,24 @@ export default function GlossaryPage() {
     <article className="section-padding bg-[var(--soft-white)] min-h-[60vh]">
       <div className="container-custom max-w-3xl">
         <h1 className="font-heading text-3xl md:text-4xl font-bold text-[var(--charcoal)] mb-3">Словарь</h1>
-        <p className="text-[var(--slate-blue)] mb-8">
-          Ориентиры для чтения каталога и переговоров с застройщиком. Формулировки не заменяют закон, договор и официальные сайты
-          ведомств.
+        <p className="text-[var(--slate-blue)] mb-4">
+          Ориентиры для чтения каталога новостроек и переговоров с застройщиком. Формулировки не заменяют закон, договор и
+          официальные сайты ведомств.
+        </p>
+        <p className="text-sm text-[var(--slate-blue)] mb-8">
+          См. также{" "}
+          <Link href="/methodology/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            как мы собираем данные
+          </Link>
+          ,{" "}
+          <Link href="/projects/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            каталог объектов
+          </Link>
+          ,{" "}
+          <Link href="/regions/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            регионы
+          </Link>
+          .
         </p>
 
         <nav className="mb-10 p-4 bg-white rounded-xl border border-gray-100">
@@ -82,6 +97,9 @@ export default function GlossaryPage() {
         <div className="mt-12 flex flex-wrap gap-3">
           <Link href="/projects/" className="btn-primary">
             Новостройки
+          </Link>
+          <Link href="/regions/" className="btn-secondary">
+            Регионы
           </Link>
           <Link href="/guide/" className="btn-secondary">
             Практический гид

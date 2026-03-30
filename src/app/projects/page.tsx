@@ -3,12 +3,12 @@ import { getElitkaProjectFilterMeta, getElitkaProjectsList } from "@/data/elitka
 import ProjectsIndexClient from "@/components/ProjectsIndexClient";
 
 export const metadata: Metadata = {
-  title: "Новостройки — каталог объектов",
+  title: "Новостройки Бишкек и КР — каталог и паспорт объекта",
   description:
-    "Фильтры по городу, застройщику, статусу и цене. Подборка и сравнение объектов из elitka.kg; проверяйте данные на minstroy.gov.kg.",
+    "Каталог новостроек из elitka.kg: фильтры по городу, застройщику, статусу и цене. Сверяйте карточку с паспортом на minstroy.gov.kg — см. verify и методологию.",
   openGraph: {
     title: "Каталог новостроек Кыргызстана",
-    description: "Объекты elitka.kg с фильтрами и сравнением до трёх позиций.",
+    description: "Объекты с фильтрами, сравнением и ссылками на официальный паспорт, где он есть в выгрузке.",
   },
 };
 

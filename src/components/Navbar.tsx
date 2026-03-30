@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/types/", label: "Типы работ" },
   { href: "/negotiator/", label: "AI-переговорщик" },
   { href: "/guide/", label: "Гид" },
+  { href: "/methodology/", label: "Методология" },
   { href: "/glossary/", label: "Словарь" },
   { href: "/updates/", label: "Изменения" },
   { href: "/corrections/", label: "Правка" },

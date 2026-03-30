@@ -179,3 +179,16 @@ h6 {
   transform: translateY(-8px);
   box-shadow: 0 20px 40px rgba(43, 76, 126, 0.12);
 }
+
+@media print {
+  .print-hidden {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .print-checklist {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+}

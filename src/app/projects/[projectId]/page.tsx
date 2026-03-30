@@ -10,9 +10,15 @@ import { getElitkaProjectPageData, getElitkaProjectStaticParams } from "@/data/e
 import ElitkaObjectFactsSection from "@/components/ElitkaObjectFactsSection";
 import PassportSnapshotSection from "@/components/PassportSnapshotSection";
 import ProjectBuyerGuideSection from "@/components/ProjectBuyerGuideSection";
+import ProjectBuyerHints from "@/components/ProjectBuyerHints";
 import ProjectBuyerSnapshot from "@/components/ProjectBuyerSnapshot";
 import ProjectBuilderTrustStrip from "@/components/ProjectBuilderTrustStrip";
+import ProjectCounterpartyHint from "@/components/ProjectCounterpartyHint";
 import ProjectCrossListingsSection from "@/components/ProjectCrossListingsSection";
+import ProjectMergeChangelogSnippet from "@/components/ProjectMergeChangelogSnippet";
+import mergeChangelogRaw from "@/data/mergeChangelog.json";
+import { buildProjectBuyerHints } from "@/lib/projectBuyerHints";
+import type { MergeChangelogData } from "@/types/mergeChangelog";
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
 
@@ -43,6 +49,13 @@ export default async function ElitkaProjectPage({ params }: Props) {
   if (!data) notFound();
 
   const builderCompany = getCompanyBySlug(data.builderSlug);
+  const mergeChangelog = mergeChangelogRaw as MergeChangelogData;
+  const buyerHints = buildProjectBuyerHints({
+    passportUrl: data.passportUrl,
+    statusCode: data.statusCode,
+    plannedFinishDisplay: data.plannedFinishDisplay,
+    passportSnapshot: data.passportSnapshot,
+  });
 
   const mapHref =
     data.lat != null && data.lng != null
@@ -80,6 +93,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
         <p className="text-[var(--slate-blue)] mb-2">{data.address}</p>
         <p className="text-xs text-[var(--steel-blue)] mb-4">{data.projectType}</p>
 
+        <ProjectBuyerHints hints={buyerHints} />
+
         <ProjectBuyerSnapshot
           statusLabel={data.statusLabel}
           plannedFinishDisplay={data.plannedFinishDisplay}
@@ -108,6 +123,12 @@ export default async function ElitkaProjectPage({ params }: Props) {
         )}
 
         {builderCompany && <ProjectBuilderTrustStrip company={builderCompany} />}
+
+        <ProjectCounterpartyHint
+          builderName={data.builderName}
+          builderSlug={data.builderSlug}
+          hasCompanyProfile={!!builderCompany}
+        />
 
         <ProjectBuyerGuideSection passportUrl={data.passportUrl} builderSlug={data.builderSlug} />
 
@@ -190,6 +211,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
         {data.crossListings && data.crossListings.length > 0 && (
           <ProjectCrossListingsSection items={data.crossListings} />
         )}
+
+        <ProjectMergeChangelogSnippet elitkaObjectId={data.elitkaObjectId} data={mergeChangelog} />
 
         <div className="flex flex-wrap gap-3 mb-8">
           {data.passportUrl && (

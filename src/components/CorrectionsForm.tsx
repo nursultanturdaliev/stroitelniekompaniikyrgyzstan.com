@@ -32,8 +32,6 @@ export default function CorrectionsForm() {
   const [pageUrl, setPageUrl] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [details, setDetails] = useState("");
-  const [status, setStatus] = useState<"idle" | "sent" | "error" | "telegram_ok">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
 
   const onSubmitMailto = useCallback(
     (e: FormEvent) => {
@@ -43,40 +41,8 @@ export default function CorrectionsForm() {
     [name, email, pageUrl, sourceUrl, details],
   );
 
-  const onSubmitApi = useCallback(
-    async (e: FormEvent) => {
-      e.preventDefault();
-      setStatus("idle");
-      setErrorMsg("");
-      try {
-        const res = await fetch("/api/correction", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: name.slice(0, 200),
-            email: email.slice(0, 200),
-            pageUrl: pageUrl.slice(0, 2000),
-            sourceUrl: sourceUrl.slice(0, 2000),
-            details: details.slice(0, 8000),
-          }),
-        });
-        const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-        if (res.ok && j.ok) {
-          setStatus("telegram_ok");
-          return;
-        }
-        setErrorMsg(j.error || `Ошибка ${res.status}`);
-        setStatus("error");
-      } catch {
-        setErrorMsg("Сеть недоступна. Используйте отправку через почту.");
-        setStatus("error");
-      }
-    },
-    [name, email, pageUrl, sourceUrl, details],
-  );
-
   return (
-    <form className="space-y-4 text-sm">
+    <form className="space-y-4 text-sm" onSubmit={onSubmitMailto}>
       <label className="block">
         <span className="text-gray-600 block mb-1">Имя / компания</span>
         <input
@@ -128,25 +94,13 @@ export default function CorrectionsForm() {
         />
       </label>
 
-      {status === "telegram_ok" && (
-        <p className="text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg p-3">Заявка отправлена. Спасибо.</p>
-      )}
-      {status === "error" && errorMsg && (
-        <p className="text-amber-900 bg-amber-50 border border-amber-100 rounded-lg p-3">{errorMsg}</p>
-      )}
-
-      <div className="flex flex-wrap gap-3 pt-2">
-        <button type="button" onClick={onSubmitMailto} className="btn-primary">
-          Открыть почту (mailto)
-        </button>
-        <button type="button" onClick={onSubmitApi} className="btn-secondary">
-          Отправить через сайт (если настроен Telegram)
+      <div className="pt-2">
+        <button type="submit" className="btn-primary">
+          Открыть почту с заполненным письмом
         </button>
       </div>
       <p className="text-xs text-gray-500">
-        Кнопка «через сайт» работает только если в Cloudflare Pages заданы секреты{" "}
-        <code className="bg-gray-100 px-1 rounded">TELEGRAM_BOT_TOKEN</code> и{" "}
-        <code className="bg-gray-100 px-1 rounded">TELEGRAM_CHAT_ID</code>. Иначе используйте почту.
+        Заявка уходит через почтовый клиент на устройстве (mailto). Мы не храним форму на сервере.
       </p>
     </form>
   );

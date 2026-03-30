@@ -210,6 +210,8 @@ export type ElitkaProjectPageData = {
   lat?: number;
   lng?: number;
   passportUrl?: string;
+  /** Сырой код статуса из elitka (например IN_PROGRESS), если есть в detail */
+  statusCode?: string;
   statusLabel?: string;
   plannedStartDisplay?: string;
   plannedFinishDisplay?: string;
@@ -297,6 +299,7 @@ function objectToPageData(
     lat,
     lng,
     passportUrl: regUrl ?? undefined,
+    statusCode: statusRaw,
     statusLabel: elitkaConstructionStatusLabel(statusRaw),
     plannedStartDisplay: formatIsoDateRu(startIso),
     plannedFinishDisplay: formatIsoDateRu(finishIso),
