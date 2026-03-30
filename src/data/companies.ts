@@ -1,7 +1,13 @@
 import type { CompanyType, ConstructionCompany } from "@/types/company";
 import { scrapedMergedCompanies } from "@/data/scrapedMergedCompanies";
 
-export type { ConstructionCompany, CompanyType, ServiceCategory, PriceRangeTier } from "@/types/company";
+export type {
+  ConstructionCompany,
+  CompanyType,
+  ServiceCategory,
+  PriceRangeTier,
+  CompanyWebsiteSnapshot,
+} from "@/types/company";
 
 /** Типы для фильтра на страницах, где в выборке нет агентств (каталог застройщиков). */
 export const CONSTRUCTION_CATALOG_TYPES: CompanyType[] = [

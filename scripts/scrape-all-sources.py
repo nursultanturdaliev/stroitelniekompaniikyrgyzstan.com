@@ -17,20 +17,27 @@
   python3 scripts/scrape-all-sources.py --passport-scrape       # + HTML паспортов (долго)
   python3 scripts/scrape-all-sources.py --passport-only --merged-in scraped/merged-companies.json --out scraped/merged-companies.json
   python3 scripts/scrape-all-sources.py --passport-only --passport-max 20   # тест на 20 URL
+  python3 scripts/scrape-all-sources.py --website-scrape --website-max 10    # снимки официальных сайтов (после merge)
+  python3 scripts/scrape-all-sources.py --website-only --merged-in scraped/merged-companies.json --out scraped/merged-companies.json
+  python3 scripts/scrape-all-sources.py --website-only --website-workers 12 --website-connect-timeout 5 --website-read-timeout 22
+  python3 scripts/scrape-all-sources.py --website-only --website-retry-failed   # только повтор после таймаутов/ошибок
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import random
 import re
 import sys
+import threading
 import time
 import urllib.parse
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 try:
@@ -958,6 +965,676 @@ def attach_passport_pages_to_payload(
     )
 
 
+# --- Снимки официальных сайтов компаний (тот же origin; без соцсетей и порталов) ---
+
+WEBSITE_BLOCKED_HOST_SUFFIXES: tuple[str, ...] = (
+    "instagram.com",
+    "facebook.com",
+    "fb.com",
+    "t.me",
+    "telegram.me",
+    "telegram.org",
+    "wa.me",
+    "whatsapp.com",
+    "youtube.com",
+    "youtu.be",
+    "tiktok.com",
+    "linkedin.com",
+    "twitter.com",
+    "x.com",
+    "google.com",
+    "goo.gl",
+    "bit.ly",
+)
+
+WEBSITE_SKIP_HOSTS: frozenset[str] = frozenset(
+    {
+        "house.kg",
+        "www.house.kg",
+        "elitka.kg",
+        "www.elitka.kg",
+        "lalafo.kg",
+        "www.lalafo.kg",
+    }
+)
+
+WEBSITE_JSON_LD_TYPES: frozenset[str] = frozenset(
+    {
+        "Organization",
+        "LocalBusiness",
+        "RealEstateAgent",
+        "Corporation",
+        "ProfessionalService",
+        "HomeAndConstructionBusiness",
+        "Store",
+        "WebSite",
+    }
+)
+
+# Второй заход: только если мало данных из JSON-LD / контактов
+WEBSITE_SECOND_HOP_PATHS: tuple[str, ...] = (
+    "/contacts",
+    "/contact",
+    "/kontakty",
+    "/about",
+    "/o-kompanii",
+    "/about-us",
+    "/company",
+    "/ru/contacts",
+    "/ru/contact",
+    "/ru/about",
+    "/kg/contacts",
+    "/en/contacts",
+    "/en/contact",
+    "/en/about",
+)
+
+WEBSITE_MAX_VISIBLE_CHARS = 24000
+WEBSITE_MAX_INTERNAL_LINKS = 100
+WEBSITE_MAX_SECOND_HOPS = 4
+
+
+def _website_host(hostname: str | None) -> str:
+    if not hostname:
+        return ""
+    h = hostname.lower()
+    return h[4:] if h.startswith("www.") else h
+
+
+def normalize_company_website_url(raw: object) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    u = raw.strip()
+    if not u:
+        return None
+    if u.startswith("//"):
+        u = "https:" + u
+    if not re.match(r"^https?://", u, re.I):
+        u = "https://" + u
+    try:
+        p = urllib.parse.urlparse(u)
+        if p.scheme not in ("http", "https"):
+            return None
+        host = _website_host(p.hostname)
+        if not host:
+            return None
+        if host in WEBSITE_SKIP_HOSTS:
+            return None
+        for suf in WEBSITE_BLOCKED_HOST_SUFFIXES:
+            if host == suf or host.endswith("." + suf):
+                return None
+        return urllib.parse.urlunparse(
+            (p.scheme, p.netloc.lower(), p.path or "/", p.params, p.query, "")
+        )
+    except Exception:
+        return None
+
+
+def canonical_website_key(url: str) -> str:
+    try:
+        p = urllib.parse.urlparse(url)
+        host = _website_host(p.hostname)
+        path = (p.path or "/").rstrip("/") or "/"
+        return f"{host}{path}"
+    except Exception:
+        return url
+
+
+def same_origin(target: str, base: str) -> bool:
+    try:
+        t = urllib.parse.urlparse(target)
+        b = urllib.parse.urlparse(base)
+        return _website_host(t.hostname) == _website_host(b.hostname)
+    except Exception:
+        return False
+
+
+def collect_company_website_jobs(payload: dict) -> list[tuple[str, str]]:
+    jobs: list[tuple[str, str]] = []
+    sources = payload.get("sources") or {}
+    for b in sources.get("elitka", {}).get("builders") or []:
+        if not isinstance(b, dict):
+            continue
+        bid, slug = b.get("builderId"), b.get("slug")
+        if bid is None or not isinstance(slug, str) or not slug:
+            continue
+        cid = f"elitka-{bid}-{slug}"
+        bd = b.get("builder_detail")
+        raw = bd.get("site_url") if isinstance(bd, dict) else None
+        nu = normalize_company_website_url(raw)
+        if nu:
+            jobs.append((cid, nu))
+    for c in sources.get("house_kg", {}).get("companies") or []:
+        if not isinstance(c, dict):
+            continue
+        slug = c.get("slug")
+        if not isinstance(slug, str) or not slug:
+            continue
+        cid = f"house-kg-{slug}"
+        nu = normalize_company_website_url(c.get("website"))
+        if nu:
+            jobs.append((cid, nu))
+    return jobs
+
+
+def _json_ld_types(node: dict) -> set[str]:
+    t = node.get("@type")
+    if isinstance(t, str):
+        return {t}
+    if isinstance(t, list):
+        return {str(x) for x in t if x is not None}
+    return set()
+
+
+def _walk_json_ld_collect(node: object, out: list[dict]) -> None:
+    if isinstance(node, dict):
+        types = _json_ld_types(node)
+        if types & WEBSITE_JSON_LD_TYPES or (
+            isinstance(node.get("name"), str) and (node.get("url") or node.get("telephone") or node.get("email"))
+        ):
+            out.append(node)
+        g = node.get("@graph")
+        if isinstance(g, list):
+            for x in g:
+                _walk_json_ld_collect(x, out)
+        for k, v in node.items():
+            if k == "@graph":
+                continue
+            if isinstance(v, (dict, list)):
+                _walk_json_ld_collect(v, out)
+    elif isinstance(node, list):
+        for x in node:
+            _walk_json_ld_collect(x, out)
+
+
+def _score_json_ld_node(node: dict) -> int:
+    types = _json_ld_types(node)
+    score = 15 * len(types & WEBSITE_JSON_LD_TYPES)
+    if isinstance(node.get("name"), str) and node["name"].strip():
+        score += 20
+    if isinstance(node.get("legalName"), str) and node["legalName"].strip():
+        score += 10
+    if isinstance(node.get("description"), str) and len(node["description"].strip()) > 40:
+        score += 15
+    for k in ("telephone", "email", "address"):
+        if node.get(k):
+            score += 8
+    return score
+
+
+def _pick_json_ld_node(data: object) -> dict | None:
+    candidates: list[dict] = []
+    _walk_json_ld_collect(data, candidates)
+    if not candidates:
+        return None
+    best = max(candidates, key=_score_json_ld_node)
+    return best if _score_json_ld_node(best) > 0 else None
+
+
+def _format_postal_address(addr: object) -> str | None:
+    if isinstance(addr, str) and addr.strip():
+        return addr.strip()
+    if not isinstance(addr, dict):
+        return None
+    parts = [
+        addr.get("streetAddress"),
+        addr.get("addressLocality"),
+        addr.get("addressRegion"),
+        addr.get("postalCode"),
+        addr.get("addressCountry"),
+    ]
+    bits = [str(p).strip() for p in parts if p and str(p).strip()]
+    return ", ".join(bits) if bits else None
+
+
+def _fields_from_json_ld_node(node: dict) -> tuple[dict[str, str], list[str]]:
+    fields: dict[str, str] = {}
+    same_as: list[str] = []
+    if isinstance(node.get("name"), str) and node["name"].strip():
+        fields["Название (schema.org)"] = node["name"].strip()
+    if isinstance(node.get("legalName"), str) and node["legalName"].strip():
+        fields["Юр. название"] = node["legalName"].strip()
+    if isinstance(node.get("description"), str) and node["description"].strip():
+        d = node["description"].strip()
+        fields["Описание"] = d[:WEBSITE_MAX_VISIBLE_CHARS]
+    tel = node.get("telephone")
+    if isinstance(tel, str) and tel.strip():
+        fields["Телефон"] = tel.strip()
+    elif isinstance(tel, list):
+        tels = [str(x).strip() for x in tel if x and str(x).strip()]
+        if tels:
+            fields["Телефон"] = ", ".join(tels)
+    em = node.get("email")
+    if isinstance(em, str) and em.strip():
+        fields["Email"] = em.strip()
+    elif isinstance(em, list):
+        ems = [str(x).strip() for x in em if x and str(x).strip()]
+        if ems:
+            fields["Email"] = ", ".join(ems)
+    addr = _format_postal_address(node.get("address"))
+    if addr:
+        fields["Адрес"] = addr
+    url = node.get("url")
+    if isinstance(url, str) and url.strip():
+        fields["Сайт (schema.org)"] = url.strip()
+    sa = node.get("sameAs")
+    if isinstance(sa, str) and sa.startswith("http"):
+        same_as.append(sa.strip())
+    elif isinstance(sa, list):
+        for x in sa:
+            if isinstance(x, str) and x.startswith("http"):
+                same_as.append(x.strip())
+    return fields, same_as
+
+
+def _parse_json_ld_blocks(html: str) -> tuple[dict[str, str], list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    merged: dict[str, str] = {}
+    all_same: list[str] = []
+    for script in soup.find_all("script", attrs={"type": lambda x: x and "ld+json" in x.lower()}):
+        raw = script.string or script.get_text()
+        if not raw or not raw.strip():
+            continue
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        node = _pick_json_ld_node(data)
+        if not node:
+            continue
+        f, sa = _fields_from_json_ld_node(node)
+        for k, v in f.items():
+            if k not in merged or len(v) > len(merged.get(k, "")):
+                merged[k] = v
+        all_same.extend(sa)
+    return merged, list(dict.fromkeys(all_same))
+
+
+def _visible_text_and_links(html: str, page_url: str) -> tuple[str, list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup(["script", "style", "noscript", "template"]):
+        tag.decompose()
+    root = (
+        soup.find("main")
+        or soup.find("article")
+        or soup.find(id=re.compile(r"content|main", re.I))
+        or soup.find(class_=re.compile(r"content|main|entry", re.I))
+        or soup.body
+    )
+    if not root:
+        root = soup
+    text = root.get_text("\n", strip=True)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    if len(text) > WEBSITE_MAX_VISIBLE_CHARS:
+        text = text[: WEBSITE_MAX_VISIBLE_CHARS] + "…"
+    internal: list[str] = []
+    seen: set[str] = set()
+    for a in soup.find_all("a", href=True):
+        href = (a.get("href") or "").strip()
+        if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+            continue
+        abs_u = urllib.parse.urljoin(page_url, href)
+        if not abs_u.startswith("http"):
+            continue
+        if not same_origin(abs_u, page_url):
+            continue
+        low = abs_u.lower()
+        if any(
+            low.split("?", 1)[0].endswith(ext)
+            for ext in (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp", ".zip", ".doc", ".docx")
+        ):
+            continue
+        nu = abs_u.split("#", 1)[0]
+        if nu not in seen:
+            seen.add(nu)
+            internal.append(nu)
+        if len(internal) >= WEBSITE_MAX_INTERNAL_LINKS:
+            break
+    return text, internal
+
+
+def _meta_from_soup(soup: BeautifulSoup) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for prop in ("og:title", "og:description", "og:site_name", "description"):
+        m = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop.replace("og:", "")})
+        if m and m.get("content"):
+            key = "Meta description" if "description" in prop else prop.replace("og:", "Open Graph: ")
+            out[key.strip()] = m["content"].strip()[:8000]
+    kw = soup.find("meta", attrs={"name": re.compile(r"^keywords$", re.I)})
+    if kw and kw.get("content"):
+        out["Ключевые слова (meta)"] = kw["content"].strip()[:4000]
+    t = soup.find("title")
+    if t and t.string and t.string.strip():
+        out["Заголовок страницы"] = t.string.strip()[:500]
+    return out
+
+
+def parse_company_page_html(html: str, final_url: str, page_label: str) -> tuple[dict[str, str], list[str]]:
+    soup = BeautifulSoup(html, "html.parser")
+    jl_fields, jl_same = _parse_json_ld_blocks(html)
+    meta = _meta_from_soup(soup)
+    visible, internal = _visible_text_and_links(html, final_url)
+    fields: dict[str, str] = {}
+    prefix = f"{page_label}: " if page_label else ""
+    for k, v in jl_fields.items():
+        fields[f"{prefix}{k}"] = v
+    for k, v in meta.items():
+        fields[f"{prefix}{k}"] = v
+    if visible.strip():
+        fields[f"{prefix}Текст страницы (сайт)"] = visible
+    if internal:
+        fields[f"{prefix}Внутренние ссылки (тот же сайт)"] = "\n".join(internal)
+    return fields, jl_same
+
+
+def website_json_ld_sparse(fields: dict[str, str]) -> bool:
+    """Мало структурированных контактов / описания — имеет смысл второй заход по /contacts, /about."""
+    has_org_name = any(
+        fields.get(k)
+        for k in fields
+        if k.endswith("Название (schema.org)") or k == "Название (schema.org)"
+    )
+    desc_len = max(
+        (len((fields.get(k) or "").strip()) for k in fields if "Описание" in k and "Текст страницы" not in k),
+        default=0,
+    )
+    has_contact = any(
+        fields.get(k)
+        for k in fields
+        if k.endswith("Телефон") or k.endswith("Email") or k.endswith("Адрес")
+        or k in ("Телефон", "Email", "Адрес")
+    )
+    if has_org_name and desc_len >= 80 and has_contact:
+        return False
+    if has_org_name and desc_len >= 120:
+        return False
+    if not has_org_name and desc_len < 50 and not has_contact:
+        return True
+    if not has_contact and desc_len < 80:
+        return True
+    return False
+
+
+def _website_bot_headers() -> dict[str, str]:
+    return {
+        "User-Agent": "Mozilla/5.0 (compatible; StroitelnieCatalogBot/1.0; +https://stroitelniekompaniikyrgyzstan.com)",
+        "Accept-Language": "ru-RU,ru;q=0.9",
+    }
+
+
+def _new_website_session() -> requests.Session:
+    s = requests.Session()
+    s.headers.update(_website_bot_headers())
+    return s
+
+
+def fetch_company_website_snapshot(
+    session: requests.Session,
+    start_url: str,
+    inter_request_delay: float,
+    second_hop: bool,
+    timeout: tuple[float, float],
+) -> dict[str, object]:
+    rec: dict[str, object] = {
+        "requested_url": start_url,
+        "final_url": start_url,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "http_status": None,
+        "error": None,
+        "fields": {},
+        "same_as": [],
+        "extra_pages_fetched": [],
+    }
+    fields: dict[str, str] = {}
+    all_same: list[str] = []
+    try:
+        r = session.get(start_url, timeout=timeout, allow_redirects=True)
+        rec["http_status"] = r.status_code
+        rec["final_url"] = r.url
+        if r.status_code != 200:
+            rec["error"] = f"HTTP {r.status_code}"
+            return rec
+        f, sa = parse_company_page_html(r.text, r.url, "")
+        fields.update(f)
+        all_same.extend(sa)
+        base_for_origin = r.url
+
+        if second_hop and website_json_ld_sparse(fields):
+            fetched_paths: set[str] = set()
+            home_path = (urllib.parse.urlparse(base_for_origin).path or "/").rstrip("/") or "/"
+            hops = 0
+            for path in WEBSITE_SECOND_HOP_PATHS:
+                if hops >= WEBSITE_MAX_SECOND_HOPS:
+                    break
+                pnorm = path if path.startswith("/") else "/" + path
+                if pnorm.rstrip("/") == home_path.rstrip("/"):
+                    continue
+                extra = urllib.parse.urljoin(base_for_origin, pnorm)
+                if not same_origin(extra, base_for_origin):
+                    continue
+                path_key = urllib.parse.urlparse(extra).path or "/"
+                if path_key in fetched_paths:
+                    continue
+                try:
+                    if inter_request_delay > 0:
+                        time.sleep(inter_request_delay)
+                    r2 = session.get(extra, timeout=timeout, allow_redirects=True)
+                    if r2.status_code != 200:
+                        continue
+                    if not same_origin(r2.url, base_for_origin):
+                        continue
+                    label = urllib.parse.urlparse(r2.url).path or path
+                    rec["extra_pages_fetched"].append(r2.url)
+                    fetched_paths.add(path_key)
+                    f2, sa2 = parse_company_page_html(r2.text, r2.url, f"Страница {label}")
+                    for fk, fv in f2.items():
+                        if fv and str(fv).strip() and fk not in fields:
+                            fields[fk] = fv
+                    all_same.extend(sa2)
+                    hops += 1
+                except requests.Timeout:
+                    continue
+                except requests.RequestException:
+                    continue
+
+        for key, val in list(fields.items()):
+            if ": " not in key or not val:
+                continue
+            short = key.rsplit(": ", 1)[-1]
+            if short in ("Телефон", "Email", "Адрес", "Название (schema.org)", "Описание", "Юр. название"):
+                if short not in fields or not str(fields.get(short, "")).strip():
+                    fields[short] = val
+
+        rec["fields"] = fields
+        rec["same_as"] = list(dict.fromkeys(all_same))
+    except requests.Timeout:
+        rec["error"] = f"Timeout (connect {timeout[0]}s, read {timeout[1]}s)"
+    except requests.RequestException as e:
+        rec["error"] = str(e)
+    return rec
+
+
+def _website_snapshot_needs_retry(prev: object) -> bool:
+    if not isinstance(prev, dict):
+        return True
+    if prev.get("error"):
+        return True
+    st = prev.get("http_status")
+    if st is not None and st != 200:
+        return True
+    flds = prev.get("fields")
+    if not isinstance(flds, dict) or not any(str(v).strip() for v in flds.values()):
+        return True
+    return False
+
+
+def _website_group_needs_retry(group: list[tuple[str, str]], prev_by_id: dict) -> bool:
+    for cid, _u in group:
+        if _website_snapshot_needs_retry(prev_by_id.get(cid)):
+            return True
+    return False
+
+
+def _fetch_one_company_website(
+    first_url: str,
+    second_hop: bool,
+    connect_timeout: float,
+    read_timeout: float,
+    inter_request_delay: float,
+) -> dict[str, object]:
+    """Отдельный Session на поток (requests.Session не потокобезопасен)."""
+    sess = _new_website_session()
+    to = (connect_timeout, read_timeout)
+    try:
+        return fetch_company_website_snapshot(sess, first_url, inter_request_delay, second_hop, to)
+    except Exception as e:
+        return {
+            "requested_url": first_url,
+            "final_url": first_url,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "http_status": None,
+            "error": str(e),
+            "fields": {},
+            "same_as": [],
+            "extra_pages_fetched": [],
+        }
+
+
+def attach_company_website_snapshots_to_payload(
+    payload: dict,
+    _session: requests.Session,
+    inter_request_delay: float,
+    max_unique_urls: int,
+    second_hop: bool,
+    *,
+    workers: int,
+    connect_timeout: float,
+    read_timeout: float,
+    retry_failed_only: bool,
+) -> None:
+    del _session  # параллельный режим: своя Session в каждом потоке
+    jobs = collect_company_website_jobs(payload)
+    by_key: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for cid, u in jobs:
+        by_key[canonical_website_key(u)].append((cid, u))
+
+    keys_sorted = sorted(by_key.keys())
+    if max_unique_urls > 0:
+        keys_sorted = keys_sorted[:max_unique_urls]
+
+    prev_block = (payload.get("sources") or {}).get("company_website_snapshots") or {}
+    prev_by_id: dict = prev_block.get("by_company_id") if isinstance(prev_block.get("by_company_id"), dict) else {}
+
+    if retry_failed_only:
+        by_company_id: dict[str, dict] = copy.deepcopy(prev_by_id)
+        keys_to_fetch = [k for k in keys_sorted if _website_group_needs_retry(by_key[k], prev_by_id)]
+    else:
+        by_company_id = {}
+        keys_to_fetch = list(keys_sorted)
+
+    stats = {
+        "unique_urls_requested": len(keys_sorted),
+        "unique_urls_fetched_this_run": len(keys_to_fetch),
+        "companies_mapped": 0,
+        "fetch_errors": 0,
+        "timeouts": 0,
+        "second_hop_enabled": second_hop,
+        "workers": max(1, workers),
+        "connect_timeout": connect_timeout,
+        "read_timeout": read_timeout,
+        "retry_failed_only": retry_failed_only,
+    }
+
+    w = max(1, min(workers, 32))
+    done_lock = threading.Lock()
+    done_count = [0]
+
+    def one_key(key: str) -> tuple[str, str, dict[str, object], list[tuple[str, str]]]:
+        group = by_key[key]
+        _cid0, first_url = group[0]
+        snap = _fetch_one_company_website(
+            first_url,
+            second_hop,
+            connect_timeout,
+            read_timeout,
+            inter_request_delay,
+        )
+        with done_lock:
+            done_count[0] += 1
+            n = done_count[0]
+        err = snap.get("error")
+        flag = f" ⚠ {err[:48]}…" if err and len(str(err)) > 48 else (f" ⚠ {err}" if err else "")
+        print(f"  сайт компании: {n}/{len(keys_to_fetch)} {first_url[:64]}…{flag}", file=sys.stderr)
+        sys.stderr.flush()
+        return key, first_url, snap, group
+
+    results: dict[str, tuple[dict[str, object], list[tuple[str, str]]]] = {}
+    if keys_to_fetch:
+        with ThreadPoolExecutor(max_workers=w) as ex:
+            futures = {ex.submit(one_key, k): k for k in keys_to_fetch}
+            for fut in as_completed(futures):
+                try:
+                    key, _, snap, group = fut.result()
+                    results[key] = (snap, group)
+                except Exception as e:
+                    k = futures[fut]
+                    group = by_key[k]
+                    _c, first_url = group[0]
+                    results[k] = (
+                        {
+                            "requested_url": first_url,
+                            "final_url": first_url,
+                            "fetched_at": datetime.now(timezone.utc).isoformat(),
+                            "http_status": None,
+                            "error": str(e),
+                            "fields": {},
+                            "same_as": [],
+                            "extra_pages_fetched": [],
+                        },
+                        group,
+                    )
+
+    for key in keys_to_fetch:
+        if key not in results:
+            continue
+        snap, group = results[key]
+        err = snap.get("error")
+        flds = snap.get("fields") if isinstance(snap.get("fields"), dict) else {}
+        has_fields = bool(flds and any(str(v).strip() for v in flds.values()))
+        if err and not has_fields:
+            stats["fetch_errors"] += 1
+        if isinstance(err, str) and "timeout" in err.lower():
+            stats["timeouts"] += 1
+        for cid, orig_url in group:
+            one = copy.deepcopy(snap)
+            one["requested_url"] = orig_url
+            by_company_id[cid] = one
+            stats["companies_mapped"] += 1
+
+    if retry_failed_only:
+        stats["companies_total_in_output"] = len(by_company_id)
+    else:
+        stats["companies_total_in_output"] = stats["companies_mapped"]
+
+    payload.setdefault("sources", {})["company_website_snapshots"] = {
+        "note_ru": (
+            "Текст и метаданные сняты с публичных страниц официальных сайтов (тот же домен; внешние ссылки не обходятся). "
+            "Загрузка параллельная; медленные сайты пропускаются по таймауту — повторите с --website-retry-failed. "
+            "При неполных данных JSON-LD дополнительно запрашиваются типичные пути (/contacts, /about и т.п.). "
+            "Не юридическая проверка; сверяйте с первоисточником."
+        ),
+        "scrapedAt": datetime.now(timezone.utc).isoformat(),
+        "stats": stats,
+        "by_company_id": by_company_id,
+    }
+    print(
+        f"  снимки сайтов: обновлено URL за этот прогон {len(keys_to_fetch)}, "
+        f"всего карточек в выгрузке {len(by_company_id)}, ошибок/пустых {stats['fetch_errors']}, "
+        f"таймаутов ~{stats['timeouts']}, потоков {w}",
+        file=sys.stderr,
+    )
+
+
 def fetch_minstroy_all_levels(
     session: requests.Session,
     levels: list[int],
@@ -1050,7 +1727,57 @@ def main() -> int:
     ap.add_argument(
         "--merged-in",
         default="scraped/merged-companies.json",
-        help="входной JSON для --passport-only",
+        help="входной JSON для --passport-only и --website-only",
+    )
+    ap.add_argument(
+        "--website-scrape",
+        action="store_true",
+        help="после сборки merge: скачать главные страницы официальных сайтов (elitka site_url, house.kg website)",
+    )
+    ap.add_argument(
+        "--website-only",
+        action="store_true",
+        help="только обновить company_website_snapshots в существующем JSON (--merged-in → --out)",
+    )
+    ap.add_argument(
+        "--website-delay",
+        type=float,
+        default=0,
+        help="пауза только между second-hop запросами внутри одной карточки (сек.; при параллели обычно 0)",
+    )
+    ap.add_argument(
+        "--website-max",
+        type=int,
+        default=0,
+        help="лимит уникальных URL сайтов (0 = все; для тестов)",
+    )
+    ap.add_argument(
+        "--website-no-second-hop",
+        action="store_true",
+        help="не запрашивать /contacts, /about и т.п. при слабом JSON-LD",
+    )
+    ap.add_argument(
+        "--website-workers",
+        type=int,
+        default=10,
+        help="число параллельных потоков загрузки сайтов (1–32)",
+    )
+    ap.add_argument(
+        "--website-connect-timeout",
+        type=float,
+        default=6,
+        help="таймаут установки TCP-соединения (сек.)",
+    )
+    ap.add_argument(
+        "--website-read-timeout",
+        type=float,
+        default=22,
+        help="таймаут чтения ответа на один HTTP-запрос (сек.); при превышении — пропуск, см. --website-retry-failed",
+    )
+    ap.add_argument(
+        "--website-retry-failed",
+        action="store_true",
+        help="перезагрузить только карточки с ошибкой/таймаутом/пустыми полями (нужен предыдущий company_website_snapshots в JSON)",
     )
     args = ap.parse_args()
 
@@ -1072,6 +1799,35 @@ def main() -> int:
             payload = json.load(f)
         print("Режим --passport-only: обновление HTML-паспортов Минстроя…", file=sys.stderr)
         attach_passport_pages_to_payload(payload, session, args.passport_delay, args.passport_max)
+        out_dir = os.path.dirname(out_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+            f.write("\n")
+        print(f"Записано: {out_path}", file=sys.stderr)
+        return 0
+
+    if args.website_only:
+        in_path = os.path.abspath(args.merged_in)
+        out_path = os.path.abspath(args.out)
+        if not os.path.isfile(in_path):
+            print(f"Файл не найден: {in_path}", file=sys.stderr)
+            return 1
+        with open(in_path, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+        print("Режим --website-only: снимки официальных сайтов компаний…", file=sys.stderr)
+        attach_company_website_snapshots_to_payload(
+            payload,
+            session,
+            args.website_delay,
+            args.website_max,
+            second_hop=not args.website_no_second_hop,
+            workers=args.website_workers,
+            connect_timeout=args.website_connect_timeout,
+            read_timeout=args.website_read_timeout,
+            retry_failed_only=args.website_retry_failed,
+        )
         out_dir = os.path.dirname(out_path)
         if out_dir:
             os.makedirs(out_dir, exist_ok=True)
@@ -1182,6 +1938,20 @@ def main() -> int:
     if args.passport_scrape:
         print("Minstroy.gov.kg: загрузка HTML паспортов объектов…", file=sys.stderr)
         attach_passport_pages_to_payload(payload, session, args.passport_delay, args.passport_max)
+
+    if args.website_scrape:
+        print("Официальные сайты компаний: загрузка страниц…", file=sys.stderr)
+        attach_company_website_snapshots_to_payload(
+            payload,
+            session,
+            args.website_delay,
+            args.website_max,
+            second_hop=not args.website_no_second_hop,
+            workers=args.website_workers,
+            connect_timeout=args.website_connect_timeout,
+            read_timeout=args.website_read_timeout,
+            retry_failed_only=args.website_retry_failed,
+        )
 
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)

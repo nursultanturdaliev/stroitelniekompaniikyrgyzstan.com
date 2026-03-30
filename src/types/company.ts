@@ -168,4 +168,19 @@ export interface ConstructionCompany {
   workHours?: string;
   twogisBranchesUrl?: string;
   sourceVerified: string[];
+  /** Автоснимок с официального сайта (тот же домен); см. merged `company_website_snapshots`. */
+  websiteSnapshot?: CompanyWebsiteSnapshot;
+}
+
+/** Снимок HTML с сайта компании (как passportSnapshot — не замена первоисточника). */
+export interface CompanyWebsiteSnapshot {
+  requestedUrl: string;
+  finalUrl?: string;
+  fetchedAt?: string;
+  httpStatus?: number | null;
+  parseError?: string | null;
+  fields: Record<string, string>;
+  sameAs?: string[];
+  /** Доп. страницы того же сайта (/contacts, /about), если сработал второй заход */
+  extraPagesFetched?: string[];
 }

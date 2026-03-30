@@ -10,6 +10,7 @@ import ContactCard from "@/components/ContactCard";
 import ReviewSection from "@/components/ReviewSection";
 import PriceRangeTag from "@/components/PriceRangeTag";
 import ProjectCard from "@/components/ProjectCard";
+import CompanyWebsiteSnapshotSection from "@/components/CompanyWebsiteSnapshotSection";
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
 
@@ -165,6 +166,8 @@ export default async function CompanyPage({ params }: Props) {
                 ))}
               </div>
             </div>
+
+            {company.websiteSnapshot && <CompanyWebsiteSnapshotSection snapshot={company.websiteSnapshot} />}
 
             <div className="bg-white rounded-xl p-6 border border-gray-100">
               <h2 className="font-heading text-xl font-semibold text-[var(--charcoal)] mb-4">Услуги</h2>

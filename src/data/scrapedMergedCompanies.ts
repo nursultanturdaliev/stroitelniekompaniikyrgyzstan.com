@@ -15,6 +15,7 @@ import { buildElitkaObjectFactsFromDetail } from "@/lib/elitkaObjectFacts";
 import { elitkaObjectImageUrls } from "@/lib/elitkaMedia";
 import { inferCityFromAddress } from "@/lib/geoKg";
 import { passportEntryForUrl } from "@/lib/minstroyPassportSnapshot";
+import { websiteSnapshotForCompanyId } from "@/lib/companyWebsiteSnapshot";
 import mergedRaw from "../../scraped/merged-companies.json";
 
 type ElitkaObjectDetail = Record<string, unknown>;
@@ -132,6 +133,23 @@ type MergedFile = {
         >;
       };
     };
+    company_website_snapshots?: {
+      scrapedAt?: string;
+      note_ru?: string;
+      by_company_id?: Record<
+        string,
+        {
+          requested_url?: string;
+          final_url?: string;
+          fetched_at?: string;
+          http_status?: number | null;
+          error?: string | null;
+          fields?: Record<string, string>;
+          same_as?: string[];
+          extra_pages_fetched?: string[];
+        }
+      >;
+    };
   };
 };
 
@@ -139,6 +157,15 @@ const merged = mergedRaw as unknown as MergedFile;
 
 const MINSTROY_OFFICIAL =
   merged.sources.minstroy?.official_registry_url ?? "https://minstroy.gov.kg/ru/license/reestr";
+
+function pickWebsiteSnapshotForUi(companyId: string) {
+  const ws = websiteSnapshotForCompanyId(companyId);
+  if (!ws) return undefined;
+  const n = Object.keys(ws.fields ?? {}).length;
+  if (n > 0 || ws.parseError) return ws;
+  if (ws.httpStatus != null && ws.httpStatus !== 200) return ws;
+  return undefined;
+}
 
 function normalizeCompanyKey(raw: string): string {
   let s = raw.toLowerCase().normalize("NFKC");
@@ -581,8 +608,12 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
   if (bd?.office_address) descHead.push(`Офис (по elitka): ${bd.office_address}.`);
   if (bd?.description_text) descHead.push(bd.description_text);
 
+  const elitkaCompanyId = `elitka-${b.builderId}-${b.slug}`;
+  const websiteSnap = pickWebsiteSnapshotForUi(elitkaCompanyId);
+  if (websiteSnap) sources.add("Сайт компании (снимок HTML)");
+
   return {
-    id: `elitka-${b.builderId}-${b.slug}`,
+    id: elitkaCompanyId,
     slug: b.slug,
     name: b.name,
     type: elitkaTypes,
@@ -639,6 +670,7 @@ function elitkaToCompany(b: ElitkaBuilder): ConstructionCompany {
     sourceVerified: [...sources],
     minstroyBlacklistWarning: Boolean(minNotes?.hasBlacklist),
     minstroyRegistryMatchCount: minRows.length,
+    websiteSnapshot: websiteSnap,
   };
 }
 
@@ -664,8 +696,12 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
   if (c.filter_listing_count != null) highlights.push(`~${c.filter_listing_count} объявл. в фильтре`);
   highlights.push(profile.type[0]);
 
+  const houseCompanyId = `house-kg-${c.slug}`;
+  const websiteSnapHouse = pickWebsiteSnapshotForUi(houseCompanyId);
+  if (websiteSnapHouse) sources.add("Сайт компании (снимок HTML)");
+
   return {
-    id: `house-kg-${c.slug}`,
+    id: houseCompanyId,
     slug: c.slug,
     name: c.name,
     type: profile.type,
@@ -710,6 +746,7 @@ function houseKgToCompany(c: HouseKgCompany): ConstructionCompany {
     sourceVerified: [...sources],
     minstroyBlacklistWarning: Boolean(minNotes?.hasBlacklist),
     minstroyRegistryMatchCount: minRows.length,
+    websiteSnapshot: websiteSnapHouse,
   };
 }
 
