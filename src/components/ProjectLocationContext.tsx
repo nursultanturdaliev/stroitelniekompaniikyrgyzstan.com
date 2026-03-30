@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getBishkekSubdistrictExtras, getLocationBuyerContext } from "@/data/locationBuyerContext";
+import { manualLocationAiOpinionText } from "@/data/locationAiOpinionText";
 import type { ProjectAiOpinion } from "@/types/projectAiOpinion";
 
 export default function ProjectLocationContext({
@@ -15,6 +16,9 @@ export default function ProjectLocationContext({
 }) {
   const ctx = getLocationBuyerContext(cityId);
   const extras = cityId === 1 ? getBishkekSubdistrictExtras(subdistrictNames) : [];
+  const locOpinion = aiLocationOpinion ?? manualLocationAiOpinionText;
+  const locTitle = "AI-мнение: место и среда";
+  const mapLabel = manualLocationAiOpinionText.mapLabel;
 
   return (
     <section className="bg-white rounded-xl border border-gray-100 p-5 mb-6">
@@ -67,38 +71,48 @@ export default function ProjectLocationContext({
             ))}
           </ul>
         </div>
-        {aiLocationOpinion && (
-          <div className="rounded-lg border border-violet-100 bg-violet-50/60 p-3">
-            <p className="text-xs font-semibold text-[var(--charcoal)] mb-2">AI-мнение: место и среда</p>
-            <p className="text-sm text-[var(--slate-blue)] mb-2">{aiLocationOpinion.summary}</p>
-            <div className="grid md:grid-cols-3 gap-3 text-xs text-[var(--slate-blue)]">
-              <div>
-                <p className="font-medium text-[var(--charcoal)] mb-1">Воздух и климат</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  {aiLocationOpinion.airAndClimate.map((x) => (
-                    <li key={x}>{x}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="font-medium text-[var(--charcoal)] mb-1">Транспорт и шум</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  {aiLocationOpinion.transportAndNoise.map((x) => (
-                    <li key={x}>{x}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="font-medium text-[var(--charcoal)] mb-1">Проверить лично</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  {aiLocationOpinion.localChecks.map((x) => (
-                    <li key={x}>{x}</li>
-                  ))}
-                </ul>
-              </div>
+        <div className="rounded-lg border border-violet-100 bg-violet-50/60 p-3">
+          <p className="text-xs font-semibold text-[var(--charcoal)] mb-2">{locTitle}</p>
+          <p className="text-sm text-[var(--slate-blue)] mb-2">{locOpinion.summary}</p>
+          <div className="grid md:grid-cols-3 gap-3 text-xs text-[var(--slate-blue)]">
+            <div>
+              <p className="font-medium text-[var(--charcoal)] mb-1">Воздух и климат</p>
+              <ul className="list-disc pl-4 space-y-1">
+                {locOpinion.airAndClimate.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-[var(--charcoal)] mb-1">Транспорт и шум</p>
+              <ul className="list-disc pl-4 space-y-1">
+                {locOpinion.transportAndNoise.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className="font-medium text-[var(--charcoal)] mb-1">Проверить лично</p>
+              <ul className="list-disc pl-4 space-y-1">
+                {locOpinion.localChecks.map((x) => (
+                  <li key={x}>{x}</li>
+                ))}
+              </ul>
             </div>
           </div>
-        )}
+          {ctx.links && ctx.links.length > 0 && (
+            <div className="mt-2 text-xs">
+              <a
+                href={ctx.links.find((l) => l.href.startsWith("http"))?.href || "https://www.openstreetmap.org/"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--steel-blue)] font-medium hover:underline"
+              >
+                {mapLabel}
+              </a>
+            </div>
+          )}
+        </div>
       </div>
 
       {ctx.links && ctx.links.length > 0 && (

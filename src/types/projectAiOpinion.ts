@@ -1,9 +1,10 @@
+/** Medium opinion block: summary + lists + nested location (per project). */
 export type ProjectAiOpinion = {
   summary: string;
   positives: string[];
   cautions: string[];
   questions: string[];
-  locationOpinion?: {
+  locationOpinion: {
     summary: string;
     airAndClimate: string[];
     transportAndNoise: string[];
