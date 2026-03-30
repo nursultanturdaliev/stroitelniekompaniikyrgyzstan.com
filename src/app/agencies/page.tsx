@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import CompaniesCatalog from "../companies/CompaniesCatalog";
 
+const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
+
+const agenciesDescription =
+  "Агентства недвижимости и риелторы Кыргызстана: фильтры по услугам, рейтингу, городу. Застройщиков и новостройки — в каталоге компаний и разделе новостроек.";
+
 export const metadata: Metadata = {
   title: "Агентства недвижимости Кыргызстана",
-  description:
-    "Риелторы и агентства (в т.ч. house.kg): фильтры по услугам, рейтингу, городу. Застройщиков смотрите в каталоге компаний.",
+  description: agenciesDescription,
   openGraph: {
     title: "Агентства недвижимости Кыргызстана",
-    description: "Каталог агентств и риелторов. Данные из открытых источников.",
+    description: agenciesDescription,
+    url: `${siteUrl}/agencies/`,
+    type: "website",
   },
 };
 

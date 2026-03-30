@@ -14,6 +14,26 @@ import CompanyWebsiteSnapshotSection from "@/components/CompanyWebsiteSnapshotSe
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
 
+const COMPANY_META_DESC_MAX = 158;
+
+function truncateCompanyMetaDescription(raw: string): string {
+  let s = raw.replace(/\s+/g, " ").trim();
+  if (s.length <= COMPANY_META_DESC_MAX) return s;
+  s = s.slice(0, COMPANY_META_DESC_MAX - 1);
+  const cut = s.lastIndexOf(" ");
+  if (cut > 70) s = s.slice(0, cut);
+  return `${s.trimEnd()}…`;
+}
+
+function buildCompanyMetaDescription(company: NonNullable<ReturnType<typeof getCompanyBySlug>>): string {
+  const tag = company.tagline?.trim() || "";
+  const city = company.location.city?.trim();
+  const primaryType = company.type[0] ?? "Компания";
+  const tail = [city, primaryType, "Профиль, контакты и новостройки в каталоге."].filter(Boolean).join(" · ");
+  const combined = tag ? `${tag} ${tail}` : `${company.name}. ${tail}`;
+  return truncateCompanyMetaDescription(combined);
+}
+
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
@@ -25,13 +45,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const company = getCompanyBySlug(slug);
   if (!company) return { title: "Компания не найдена" };
   const primaryType = company.type[0] ?? "Компания";
+  const description = buildCompanyMetaDescription(company);
   return {
     title: `${company.name} — ${primaryType.toLowerCase()}`,
-    description: company.tagline,
+    description,
     openGraph: {
       title: company.name,
-      description: company.tagline,
+      description,
       url: `${siteUrl}/companies/${company.slug}/`,
+      type: "website",
     },
   };
 }

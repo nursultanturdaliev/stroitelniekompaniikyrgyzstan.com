@@ -2,13 +2,19 @@ import type { Metadata } from "next";
 import { getElitkaProjectFilterMeta, getElitkaProjectsList } from "@/data/elitkaProjectsFromMerge";
 import ProjectsIndexClient from "@/components/ProjectsIndexClient";
 
+const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
+
+const projectsIndexDescription =
+  "Каталог новостроек из elitka.kg: фильтры по городу, застройщику, статусу и цене. Сверяйте карточку с паспортом на minstroy.gov.kg — разделы verify, guide и методология.";
+
 export const metadata: Metadata = {
   title: "Новостройки Бишкек и КР — каталог и паспорт объекта",
-  description:
-    "Каталог новостроек из elitka.kg: фильтры по городу, застройщику, статусу и цене. Сверяйте карточку с паспортом на minstroy.gov.kg — см. verify и методологию.",
+  description: projectsIndexDescription,
   openGraph: {
     title: "Каталог новостроек Кыргызстана",
-    description: "Объекты с фильтрами, сравнением и ссылками на официальный паспорт, где он есть в выгрузке.",
+    description: projectsIndexDescription,
+    url: `${siteUrl}/projects/`,
+    type: "website",
   },
 };
 

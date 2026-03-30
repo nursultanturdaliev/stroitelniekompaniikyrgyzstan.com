@@ -3,12 +3,19 @@ import Link from "next/link";
 import { getElitkaProjectsList } from "@/data/elitkaProjectsFromMerge";
 import ProjectsMapClient from "@/components/ProjectsMapClient";
 
+const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
+
+const mapDescription =
+  "Карта новостроек: объекты elitka.kg на OpenStreetMap по координатам каталога. Ориентир на местности; адрес и паспорт сверяйте на minstroy.gov.kg. Рядом — список с фильтрами и гид по проверке.";
+
 export const metadata: Metadata = {
-  title: "Карта новостроек",
-  description: "Объекты из elitka.kg на карте OpenStreetMap по координатам каталога. Проверяйте адрес и статус на minstroy.gov.kg.",
+  title: "Карта новостроек Кыргызстана — elitka.kg на карте",
+  description: mapDescription,
   openGraph: {
     title: "Карта новостроек Кыргызстана",
-    description: "Интерактивная карта объектов с координатами из открытого API elitka.kg.",
+    description: mapDescription,
+    url: `${siteUrl}/projects/map/`,
+    type: "website",
   },
 };
 

@@ -72,7 +72,12 @@ export default function ProjectLocationContext({
           </ul>
         </div>
         <div className="rounded-lg border border-violet-100 bg-violet-50/60 p-3">
-          <p className="text-xs font-semibold text-[var(--charcoal)] mb-2">{locTitle}</p>
+          <p className="text-xs font-semibold text-[var(--charcoal)] mb-1">{locTitle}</p>
+          <p className="text-[10px] text-gray-500 mb-2">
+            {aiLocationOpinion
+              ? "Блок привязан к полям карточки этого объекта; не онлайн-чат и не замена осмотра."
+              : "Общий ориентир по городу; персональный текст по объекту — когда он есть в выгрузке."}
+          </p>
           <p className="text-sm text-[var(--slate-blue)] mb-2">{locOpinion.summary}</p>
           <div className="grid md:grid-cols-3 gap-3 text-xs text-[var(--slate-blue)]">
             <div>

@@ -27,6 +27,35 @@ import type { MergeChangelogData } from "@/types/mergeChangelog";
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
 
+const META_DESC_MAX = 158;
+
+function cityLabelRu(cityId?: number): string | undefined {
+  if (cityId === 1) return "Бишкек";
+  if (cityId === 2) return "Ош";
+  return undefined;
+}
+
+/** SEO / Open Graph description: facts from page data only, truncated for snippets. */
+function buildProjectMetaDescription(data: NonNullable<ReturnType<typeof getElitkaProjectPageData>>): string {
+  const parts: string[] = [data.title];
+  if (data.address?.trim()) parts.push(data.address.trim());
+  const city = cityLabelRu(data.cityId);
+  if (city) parts.push(city);
+  if (data.statusLabel?.trim()) parts.push(data.statusLabel.trim());
+  if (data.passportUrl) {
+    parts.push("В карточке есть ссылка на паспорт; сверьте на minstroy.gov.kg.");
+  } else {
+    parts.push("Паспорт проверьте на minstroy.gov.kg.");
+  }
+  parts.push("Данные elitka.kg.");
+  let s = parts.join(" ").replace(/\s+/g, " ").trim();
+  if (s.length <= META_DESC_MAX) return s;
+  s = s.slice(0, META_DESC_MAX - 1);
+  const cut = s.lastIndexOf(" ");
+  if (cut > 90) s = s.slice(0, cut);
+  return `${s.trimEnd()}…`;
+}
+
 type Props = { params: Promise<{ projectId: string }> };
 
 export function generateStaticParams() {
@@ -37,12 +66,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { projectId } = await params;
   const data = getElitkaProjectPageData(projectId);
   if (!data) return { title: "Объект не найден" };
+  const description = buildProjectMetaDescription(data);
   return {
     title: `${data.title} — объект`,
-    description: `${data.address}. Плановые данные из elitka.kg; проверяйте паспорт на minstroy.gov.kg.`,
+    description,
     openGraph: {
       title: data.title,
-      description: data.address,
+      description,
       url: `${siteUrl}/projects/${data.projectId}/`,
     },
   };
@@ -77,7 +107,30 @@ export default async function ElitkaProjectPage({ params }: Props) {
       })
     : null;
 
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${siteUrl}/` },
+      { "@type": "ListItem", position: 2, name: "Новостройки", item: `${siteUrl}/projects/` },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: data.builderName,
+        item: `${siteUrl}/companies/${data.builderSlug}/`,
+      },
+      {
+        "@type": "ListItem",
+        position: 4,
+        name: data.title,
+        item: `${siteUrl}/projects/${data.projectId}/`,
+      },
+    ],
+  };
+
   return (
+    <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
     <article className="section-padding bg-[var(--soft-white)] min-h-[60vh]">
       <div className="container-custom max-w-3xl">
         <nav className="text-sm text-[var(--slate-blue)] mb-6">
@@ -112,7 +165,7 @@ export default async function ElitkaProjectPage({ params }: Props) {
           elitkaFacts={data.elitkaFacts}
         />
 
-        <ProjectAiOpinionSection opinion={aiOpinion} objectId={data.elitkaObjectId} />
+        <ProjectAiOpinionSection opinion={aiOpinion} objectId={data.elitkaObjectId} passportUrl={data.passportUrl} />
 
         <ProjectExpertAnalyticsSection analytics={data.expertAnalytics} />
 
@@ -271,5 +324,6 @@ export default async function ElitkaProjectPage({ params }: Props) {
         </div>
       </div>
     </article>
+    </>
   );
 }

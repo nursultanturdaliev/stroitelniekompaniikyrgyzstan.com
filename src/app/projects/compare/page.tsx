@@ -3,9 +3,20 @@ import { Suspense } from "react";
 import { getElitkaProjectsList } from "@/data/elitkaProjectsFromMerge";
 import CompareProjectsClient from "@/components/CompareProjectsClient";
 
+const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
+
+const compareDescription =
+  "Сравнение до трёх новостроек из каталога: сроки, цены, статус, ссылки на паспорт minstroy.gov.kg и карточки elitka.kg. Дополняйте проверкой по официальным реестрам.";
+
 export const metadata: Metadata = {
-  title: "Сравнение новостроек",
-  description: "Сравните до трёх объектов из каталога: сроки, цены, ссылки на паспорт и elitka.kg.",
+  title: "Сравнение новостроек — до трёх объектов",
+  description: compareDescription,
+  openGraph: {
+    title: "Сравнение новостроек Кыргызстана",
+    description: compareDescription,
+    url: `${siteUrl}/projects/compare/`,
+    type: "website",
+  },
 };
 
 function CompareFallback() {
