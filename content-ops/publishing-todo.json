@@ -1,0 +1,60 @@
+{
+  "updatedAt": "2026-03-30T05:43:53.306Z",
+  "tasks": [
+    {
+      "id": "recurring-7e636a5cdab17d9ec5",
+      "createdAt": "2026-03-30T05:43:53.306Z",
+      "status": "pending",
+      "priority": "high",
+      "category": "Исследование",
+      "title": "Поиск строительных компаний на 2GIS.kg — запросы «строительная компания», «застройщик», «ремонт квартир» (Бишкек)",
+      "sourceName": "Внутренний",
+      "sourceUrl": "",
+      "url": ""
+    },
+    {
+      "id": "recurring-777917ea3db881b47a",
+      "createdAt": "2026-03-30T05:43:53.306Z",
+      "status": "pending",
+      "priority": "high",
+      "category": "Верификация",
+      "title": "Проверить лицензии СЛР / СРО по публичным реестрам для одной карточки",
+      "sourceName": "Внутренний",
+      "sourceUrl": "",
+      "url": ""
+    },
+    {
+      "id": "recurring-d27db4c008323bc2ed",
+      "createdAt": "2026-03-30T05:43:53.306Z",
+      "status": "pending",
+      "priority": "medium",
+      "category": "Обновление данных",
+      "title": "Обновить контакты и рейтинги существующих карточек каталога",
+      "sourceName": "Внутренний",
+      "sourceUrl": "",
+      "url": ""
+    },
+    {
+      "id": "recurring-81a723df0a82adf714",
+      "createdAt": "2026-03-30T05:43:53.306Z",
+      "status": "pending",
+      "priority": "medium",
+      "category": "Наполнение сайта",
+      "title": "Добавить новую компанию в src/data/companies.ts с полем sourceVerified",
+      "sourceName": "Внутренний",
+      "sourceUrl": "",
+      "url": ""
+    },
+    {
+      "id": "recurring-c1f6a643b21627583e",
+      "createdAt": "2026-03-30T05:43:53.306Z",
+      "status": "pending",
+      "priority": "medium",
+      "category": "Обогащение",
+      "title": "Обогатить карточку: проекты, сметные ориентиры, ссылки на отзывы",
+      "sourceName": "Внутренний",
+      "sourceUrl": "",
+      "url": ""
+    }
+  ]
+}
