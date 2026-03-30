@@ -18,6 +18,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/methodology/",
     "/buyers/first-apartment/",
     "/buyers/sales-visit/",
+    "/buyers/location-environment/",
     "/for-developers/",
     "/ky/verify/",
     "/ky/methodology/",

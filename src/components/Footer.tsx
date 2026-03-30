@@ -13,6 +13,7 @@ const footerLinks = {
   ],
   info: [
     { href: "/buyers/first-apartment/", label: "Первая квартира" },
+    { href: "/buyers/location-environment/", label: "Место и среда" },
     { href: "/for-developers/", label: "Для застройщиков" },
     { href: "/methodology/", label: "Как мы собираем данные" },
     { href: "/guide/", label: "Как выбрать подрядчика" },

@@ -15,6 +15,7 @@ import ProjectBuyerSnapshot from "@/components/ProjectBuyerSnapshot";
 import ProjectBuilderTrustStrip from "@/components/ProjectBuilderTrustStrip";
 import ProjectCounterpartyHint from "@/components/ProjectCounterpartyHint";
 import ProjectCrossListingsSection from "@/components/ProjectCrossListingsSection";
+import ProjectLocationContext from "@/components/ProjectLocationContext";
 import ProjectMergeChangelogSnippet from "@/components/ProjectMergeChangelogSnippet";
 import mergeChangelogRaw from "@/data/mergeChangelog.json";
 import { buildProjectBuyerHints } from "@/lib/projectBuyerHints";
@@ -172,6 +173,12 @@ export default async function ElitkaProjectPage({ params }: Props) {
             </p>
           </section>
         )}
+
+        <ProjectLocationContext
+          cityId={data.cityId}
+          subdistrictNames={data.elitkaFacts?.subdistrictNames?.filter(Boolean) ?? []}
+          address={data.address}
+        />
 
         {(data.lat != null && data.lng != null) || mapHref ? (
           <section className="bg-white rounded-xl border border-gray-100 p-5 mb-6">

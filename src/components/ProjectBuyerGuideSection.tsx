@@ -84,6 +84,11 @@ export default function ProjectBuyerGuideSection({
           </Link>
         </li>
         <li>
+          <Link href="/buyers/location-environment/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            Место: география, воздух, быт
+          </Link>
+        </li>
+        <li>
           <Link href={negotiatorHref} className="text-[var(--steel-blue)] font-medium hover:underline">
             AI-переговорщик
           </Link>

@@ -27,6 +27,10 @@ export default function RegionsPage() {
             каталог объектов
           </Link>
           ,{" "}
+          <Link href="/buyers/location-environment/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            место и среда (география, воздух, быт)
+          </Link>
+          ,{" "}
           <Link href="/glossary/" className="text-[var(--steel-blue)] font-medium hover:underline">
             словарь
           </Link>
@@ -58,6 +62,28 @@ export default function RegionsPage() {
                 <p className="text-xs text-gray-500 mb-3">В фильтрах каталога: city_id = {r.elitkaCityId} (elitka.kg)</p>
               )}
               <p className="text-sm text-[var(--slate-blue)] mb-4">{r.intro}</p>
+              {(r.geography || r.airAndClimate || r.mobilityNoiseLife) && (
+                <div className="mb-4 space-y-3 text-sm text-[var(--slate-blue)] border-l-2 border-[var(--steel-blue)]/25 pl-4">
+                  {r.geography && (
+                    <p>
+                      <span className="font-medium text-[var(--charcoal)]">География и рельеф: </span>
+                      {r.geography}
+                    </p>
+                  )}
+                  {r.airAndClimate && (
+                    <p>
+                      <span className="font-medium text-[var(--charcoal)]">Климат и воздух: </span>
+                      {r.airAndClimate}
+                    </p>
+                  )}
+                  {r.mobilityNoiseLife && (
+                    <p>
+                      <span className="font-medium text-[var(--charcoal)]">Транспорт, шум, быт: </span>
+                      {r.mobilityNoiseLife}
+                    </p>
+                  )}
+                </div>
+              )}
               <ul className="list-disc pl-5 text-sm text-[var(--slate-blue)] space-y-2">
                 {r.bullets.map((b, i) => (
                   <li key={`${r.id}-${i}`}>{b}</li>
@@ -82,6 +108,9 @@ export default function RegionsPage() {
           </Link>
           <Link href="/methodology/" className="btn-secondary">
             Методология
+          </Link>
+          <Link href="/buyers/location-environment/" className="btn-secondary">
+            Место и среда
           </Link>
         </div>
       </div>

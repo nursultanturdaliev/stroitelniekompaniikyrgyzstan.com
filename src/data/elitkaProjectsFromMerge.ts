@@ -207,6 +207,10 @@ export type ElitkaProjectPageData = {
   title: string;
   address: string;
   elitkaObjectId: number;
+  /** city_id из detail elitka, если есть */
+  cityId?: number;
+  /** district_id из detail elitka, если есть */
+  districtId?: number;
   lat?: number;
   lng?: number;
   passportUrl?: string;
@@ -288,6 +292,9 @@ function objectToPageData(
     crossBlock?.by_elitka_object_id?.[String(oid)] ?? crossBlock?.by_elitka_object_id?.[`${oid}`];
   const crossListings = normalizeCrossListings(crossRaw);
 
+  const cityId = typeof d?.city_id === "number" ? Math.round(d.city_id) : undefined;
+  const districtId = typeof d?.district_id === "number" ? Math.round(d.district_id) : undefined;
+
   return {
     projectId: `elitka-${oid}`,
     scrapedAt,
@@ -296,6 +303,8 @@ function objectToPageData(
     title: o.title,
     address: o.address.trim(),
     elitkaObjectId: oid,
+    cityId,
+    districtId,
     lat,
     lng,
     passportUrl: regUrl ?? undefined,

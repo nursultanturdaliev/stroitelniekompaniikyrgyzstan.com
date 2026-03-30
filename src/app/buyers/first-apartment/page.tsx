@@ -76,6 +76,9 @@ export default function FirstApartmentPage() {
           ))}
         </ol>
         <div className="mt-10 flex flex-wrap gap-3 print-hidden">
+          <Link href="/buyers/location-environment/" className="btn-secondary">
+            Место и среда в КР
+          </Link>
           <Link href="/guide/#price-currency" className="btn-secondary">
             Цена: $/м² и сомы
           </Link>
