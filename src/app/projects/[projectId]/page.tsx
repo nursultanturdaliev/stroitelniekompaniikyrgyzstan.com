@@ -19,6 +19,8 @@ import ProjectAiOpinionSection from "@/components/ProjectAiOpinionSection";
 import ProjectExpertAnalyticsSection from "@/components/ProjectExpertAnalytics";
 import ProjectLocationContext from "@/components/ProjectLocationContext";
 import ProjectMergeChangelogSnippet from "@/components/ProjectMergeChangelogSnippet";
+import ProjectPageFurtherReading from "@/components/ProjectPageFurtherReading";
+import ProjectPageReadingGuide from "@/components/ProjectPageReadingGuide";
 import aiOpinionsRaw from "@/data/projectAiOpinions.json";
 import mergeChangelogRaw from "@/data/mergeChangelog.json";
 import { buildProjectBuyerHints } from "@/lib/projectBuyerHints";
@@ -153,6 +155,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
         <p className="text-[var(--slate-blue)] mb-2">{data.address}</p>
         <p className="text-xs text-[var(--steel-blue)] mb-4">{data.projectType}</p>
 
+        <ProjectPageReadingGuide />
+
         <ProjectBuyerHints hints={buyerHints} />
 
         <ProjectBuyerSnapshot
@@ -285,6 +289,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
 
         <ProjectMergeChangelogSnippet elitkaObjectId={data.elitkaObjectId} data={mergeChangelog} />
 
+        <ProjectPageFurtherReading />
+
         <div className="flex flex-wrap gap-3 mb-8">
           {data.passportUrl && (
             <a
@@ -311,6 +317,9 @@ export default async function ElitkaProjectPage({ params }: Props) {
 
         <div className="p-5 rounded-xl bg-amber-50 border border-amber-100 text-sm text-[var(--slate-blue)]">
           <p className="font-medium text-[var(--charcoal)] mb-2">Не юридическая консультация</p>
+          <p className="text-xs text-gray-600 mb-2">
+            Общая логика блоков на странице — в раскрывающемся разделе «Как читать эту страницу» вверху.
+          </p>
           <p className="mb-2">
             Каталог не заменяет проверку на{" "}
             <a href="https://minstroy.gov.kg" className="text-[var(--steel-blue)] underline" target="_blank" rel="noopener noreferrer">

@@ -59,6 +59,22 @@ npm run scrape:sources
 
 Отдельно только 2GIS (один запрос): [`scripts/scrape-2gis.py`](scripts/scrape-2gis.py).
 
+### После обновления `merged-companies.json`
+
+Страницы объектов подтягивают **AI-мнения** из [`src/data/projectAiOpinions.json`](src/data/projectAiOpinions.json) (генератор не трогает merge-файл). Чтобы пересобрать мнения и статику:
+
+```bash
+npm run data:refresh
+```
+
+Это выполняет `npm run ai:opinions` и затем `npm run build`. Учитывайте время сборки: маршрутов страниц объектов много (~900+ при текущей выгрузке).
+
+Если нужны только мнения без полной сборки:
+
+```bash
+npm run ai:opinions
+```
+
 ## Ежедневная очередь контента
 
 ```bash
