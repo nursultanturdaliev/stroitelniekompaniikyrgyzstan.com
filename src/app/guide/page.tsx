@@ -58,7 +58,7 @@ export default function GuidePage() {
         <div className="mt-10 space-y-10">
           <h2 className="font-heading text-2xl font-bold text-[var(--charcoal)]">Реестры и типы компаний</h2>
           {registryGuideSections.map((section) => (
-            <section key={section.id} className="bg-white rounded-xl border border-gray-100 p-6">
+            <section key={section.id} id={section.id} className="bg-white rounded-xl border border-gray-100 p-6 scroll-mt-24">
               <h3 className="font-heading text-lg font-semibold text-[var(--charcoal)] mb-3">{section.title}</h3>
               <div className="text-sm text-[var(--slate-blue)] space-y-3 mb-4">
                 {section.paragraphs.map((p, i) => (
@@ -87,7 +87,13 @@ export default function GuidePage() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-4">
-          <Link href="/companies/" className="btn-primary">
+          <Link href="/verify/" className="btn-primary">
+            Проверка за 5 минут
+          </Link>
+          <Link href="/projects/" className="btn-secondary">
+            Каталог новостроек
+          </Link>
+          <Link href="/companies/" className="btn-secondary">
             Каталог компаний
           </Link>
           <Link href="/faq/" className="btn-secondary">

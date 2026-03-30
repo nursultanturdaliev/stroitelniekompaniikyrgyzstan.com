@@ -75,6 +75,126 @@ function projectTypeFromTitle(title: string): ServiceCategory {
   return "Строительство домов";
 }
 
+/** Сегмент цены за м² ($), для фильтра каталога объектов. */
+export type ElitkaProjectPriceTier = "budget" | "mid" | "premium" | "luxury" | "unknown";
+
+export type ElitkaProjectListItem = {
+  projectId: string;
+  elitkaObjectId: number;
+  title: string;
+  address: string;
+  builderSlug: string;
+  builderName: string;
+  slug: string;
+  statusCode?: string;
+  statusLabel?: string;
+  cityId?: number;
+  districtId?: number;
+  subdistricts: string[];
+  priceUsdM2: number | null;
+  priceTier: ElitkaProjectPriceTier;
+  displayPriceUsdM2?: string;
+  displayPriceKgsM2?: string;
+  passportUrl?: string;
+  thumbUrl: string | null;
+  plannedFinishDisplay?: string;
+  projectType: ServiceCategory;
+};
+
+function parseUsdM2(raw: string | undefined): number | null {
+  if (raw == null) return null;
+  const s = String(raw).trim();
+  if (!s || s === "0") return null;
+  const n = Number.parseFloat(s.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
+
+function priceTierFromUsd(usd: number | null): ElitkaProjectPriceTier {
+  if (usd == null) return "unknown";
+  if (usd < 1100) return "budget";
+  if (usd < 1600) return "mid";
+  if (usd < 2200) return "premium";
+  return "luxury";
+}
+
+function pageDataToListItem(full: ElitkaProjectPageData, o: ElitkaObjectJson): ElitkaProjectListItem {
+  const d = o.detail;
+  const statusRaw = typeof d?.status === "string" ? d.status : undefined;
+  const cityId = typeof d?.city_id === "number" ? Math.round(d.city_id) : undefined;
+  const districtId = typeof d?.district_id === "number" ? Math.round(d.district_id) : undefined;
+  const subdistricts = full.elitkaFacts?.subdistrictNames?.filter(Boolean) ?? [];
+  const usd =
+    parseUsdM2(full.displayPriceUsdM2) ??
+    (typeof o.price_usd_m2 === "string" ? parseUsdM2(o.price_usd_m2) : null);
+
+  return {
+    projectId: full.projectId,
+    elitkaObjectId: full.elitkaObjectId,
+    title: full.title,
+    address: full.address,
+    builderSlug: full.builderSlug,
+    builderName: full.builderName,
+    slug: o.slug,
+    statusCode: statusRaw,
+    statusLabel: full.statusLabel,
+    cityId,
+    districtId,
+    subdistricts,
+    priceUsdM2: usd,
+    priceTier: priceTierFromUsd(usd),
+    displayPriceUsdM2: full.displayPriceUsdM2,
+    displayPriceKgsM2: full.displayPriceKgsM2,
+    passportUrl: full.passportUrl,
+    thumbUrl: full.galleryImageUrls[0] ?? null,
+    plannedFinishDisplay: full.plannedFinishDisplay,
+    projectType: full.projectType,
+  };
+}
+
+export type ElitkaProjectFilterMeta = {
+  builders: { slug: string; name: string }[];
+  /** Популярные подписи районов из каталога (elitka). */
+  subdistrictOptions: string[];
+};
+
+export function getElitkaProjectFilterMeta(list: ElitkaProjectListItem[]): ElitkaProjectFilterMeta {
+  const builders = new Map<string, string>();
+  const subCount = new Map<string, number>();
+  for (const p of list) {
+    if (!builders.has(p.builderSlug)) builders.set(p.builderSlug, p.builderName);
+    for (const s of p.subdistricts) {
+      const k = s.trim();
+      if (k) subCount.set(k, (subCount.get(k) ?? 0) + 1);
+    }
+  }
+  const builderArr = [...builders.entries()]
+    .map(([slug, name]) => ({ slug, name }))
+    .sort((a, b) => a.name.localeCompare(b.name, "ru"));
+  const subdistrictOptions = [...subCount.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 48)
+    .map(([label]) => label);
+  return { builders: builderArr, subdistrictOptions };
+}
+
+/** Все объекты elitka для каталога /projects/ и сравнения. */
+export function getElitkaProjectsList(): ElitkaProjectListItem[] {
+  const scrapedAt = merged.scrapedAt;
+  const seen = new Set<number>();
+  const out: ElitkaProjectListItem[] = [];
+  for (const b of merged.sources.elitka.builders) {
+    for (const o of b.objects) {
+      if (typeof o.id !== "number" || seen.has(o.id)) continue;
+      seen.add(o.id);
+      const full = objectToPageData(b, o, scrapedAt);
+      if (!full) continue;
+      out.push(pageDataToListItem(full, o));
+    }
+  }
+  out.sort((a, b) => a.title.localeCompare(b.title, "ru"));
+  return out;
+}
+
 export type ElitkaProjectPageData = {
   projectId: string;
   scrapedAt: string;

@@ -38,6 +38,12 @@ export default function ProjectBuyerGuideSection({
           переносе сроков сдачи (формулировки нейтральные; детали — только из ваших документов и переговоров).
         </li>
       </ol>
+      <p className="mt-3 text-sm">
+        <Link href="/verify/" className="text-[var(--steel-blue)] font-medium hover:underline">
+          Проверка застройщика и объекта за 5 минут
+        </Link>
+        <span className="text-gray-500 text-xs"> — пошаговый ориентир по официальным источникам.</span>
+      </p>
       <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-sm">
         {passportUrl && (
           <li>

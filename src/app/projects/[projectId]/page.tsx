@@ -65,8 +65,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
             Главная
           </Link>
           <span className="mx-2">/</span>
-          <Link href="/companies/" className="hover:text-[var(--steel-blue)]">
-            Компании
+          <Link href="/projects/" className="hover:text-[var(--steel-blue)]">
+            Новостройки
           </Link>
           <span className="mx-2">/</span>
           <Link href={`/companies/${data.builderSlug}/`} className="hover:text-[var(--steel-blue)]">

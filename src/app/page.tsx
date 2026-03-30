@@ -53,6 +53,9 @@ export default function Home() {
             <Link href="/companies/" className="btn-primary">
               Все компании
             </Link>
+            <Link href="/projects/" className="btn-secondary">
+              Новостройки
+            </Link>
             <Link href="/agencies/" className="btn-secondary">
               Агентства недвижимости
             </Link>
