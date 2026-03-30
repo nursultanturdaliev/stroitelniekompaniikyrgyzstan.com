@@ -2,13 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { regionalNotes } from "@/data/regionalNotes";
 
+const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
+
+const regionsDescription =
+  "Новостройки Бишкек и других городов: как читать каталог, фильтры elitka и проверка паспорта объекта. Не юридическая консультация. Ссылки на verify, гид и словарь.";
+
 export const metadata: Metadata = {
   title: "Новостройки Бишкек, Ош и регионы — ориентиры",
-  description:
-    "Новостройки Бишкек и других городов: как читать каталог, фильтры elitka и проверка паспорта объекта. Не юридическая консультация.",
+  description: regionsDescription,
   openGraph: {
     title: "Регионы — новостройки Кыргызстана",
-    description: "Ориентиры по городам: каталог, словарь терминов и ссылки на официальные источники.",
+    description: regionsDescription,
+    url: `${siteUrl}/regions/`,
+    type: "website",
   },
 };
 

@@ -71,8 +71,7 @@ export default async function CompanyPage({ params }: Props) {
   const catalogParentHref = agencyProfile ? "/agencies/" : repairProfile ? "/remont/" : "/companies/";
   const catalogParentLabel = agencyProfile ? "Агентства" : repairProfile ? "Ремонт" : "Компании";
 
-  const jsonLd = {
-    "@context": "https://schema.org",
+  const localBusinessLd = {
     "@type": "LocalBusiness",
     name: company.name,
     description: company.tagline,
@@ -101,9 +100,33 @@ export default async function CompanyPage({ params }: Props) {
         : undefined,
   };
 
+  const breadcrumbLd = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${siteUrl}/` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: catalogParentLabel,
+        item: `${siteUrl}${catalogParentHref}`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: company.name,
+        item: `${siteUrl}/companies/${company.slug}/`,
+      },
+    ],
+  };
+
+  const structuredGraph = {
+    "@context": "https://schema.org",
+    "@graph": [breadcrumbLd, localBusinessLd],
+  };
+
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredGraph) }} />
 
       <section className="bg-[var(--deep-navy)] py-10">
         <div className="container-custom">

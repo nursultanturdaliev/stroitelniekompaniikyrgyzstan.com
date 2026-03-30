@@ -1,13 +1,19 @@
 import type { Metadata } from "next";
 import CompaniesCatalog from "../companies/CompaniesCatalog";
 
+const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
+
+const remontDescription =
+  "Каталог компаний по ремонту квартир и помещений: фильтры по городу, рейтингу, лицензии. Застройщиков и агентства — в других разделах. Новостройки — в каталоге elitka.";
+
 export const metadata: Metadata = {
   title: "Ремонтные компании Кыргызстана",
-  description:
-    "Каталог компаний по ремонту квартир и помещений: фильтры по городу, рейтингу, лицензии. Застройщиков и агентства — в других разделах.",
+  description: remontDescription,
   openGraph: {
     title: "Ремонтные компании Кыргызстана",
-    description: "Поиск подрядчиков по ремонту. Данные из открытых источников.",
+    description: remontDescription,
+    url: `${siteUrl}/remont/`,
+    type: "website",
   },
 };
 

@@ -4,9 +4,20 @@ import SectionTitle from "@/components/SectionTitle";
 import TypeCard from "@/components/TypeCard";
 import { constructionTypes } from "@/data/constructionTypes";
 
+const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
+
+const typesIndexDescription =
+  "Дома, многоэтажка, ремонт, проектирование, дороги — что учесть при выборе подрядчика в Кыргызстане. Далее — каталог компаний и гиды по проверке.";
+
 export const metadata: Metadata = {
   title: "Типы строительных работ",
-  description: "Дома, многоэтажка, ремонт, проектирование, дороги — что учесть при выборе подрядчика в Кыргызстане.",
+  description: typesIndexDescription,
+  openGraph: {
+    title: "Типы строительных работ",
+    description: typesIndexDescription,
+    url: `${siteUrl}/types/`,
+    type: "website",
+  },
 };
 
 export default function TypesPage() {
@@ -24,9 +35,17 @@ export default function TypesPage() {
           ))}
         </div>
         <p className="text-center mt-10 text-sm text-[var(--slate-blue)]">
-          Дальше —{" "}
+          Дальше:{" "}
           <Link href="/companies/" className="text-[var(--steel-blue)] font-medium hover:underline">
             каталог компаний
+          </Link>
+          {" · "}
+          <Link href="/verify/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            проверка за 5 минут
+          </Link>
+          {" · "}
+          <Link href="/guide/" className="text-[var(--steel-blue)] font-medium hover:underline">
+            гид и реестры
           </Link>
           .
         </p>
