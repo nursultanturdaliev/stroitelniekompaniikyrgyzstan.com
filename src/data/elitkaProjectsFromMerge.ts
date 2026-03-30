@@ -233,7 +233,119 @@ export type ElitkaProjectPageData = {
   displayPriceUsdM2?: string;
   displayPriceKgsM2?: string;
   crossListings?: ProjectCrossListing[];
+  expertAnalytics: ProjectExpertAnalytics;
 };
+
+export type ProjectExpertAnalytics = {
+  confidence: "low" | "medium" | "high";
+  score: number;
+  verdict: string;
+  strengths: string[];
+  risks: string[];
+  questions: string[];
+};
+
+function buildExpertAnalytics(input: {
+  statusCode?: string;
+  passportUrl?: string;
+  hasPassportSnapshot: boolean;
+  passportSnapshotHasError: boolean;
+  displayPriceUsdM2?: string;
+  displayPriceKgsM2?: string;
+  plannedFinishDisplay?: string;
+  scheduleSlipNote?: string;
+  cityId?: number;
+  hasCoordinates: boolean;
+  subdistrictCount: number;
+}): ProjectExpertAnalytics {
+  const strengths: string[] = [];
+  const risks: string[] = [];
+  const questions: string[] = [];
+
+  let score = 50;
+
+  if (input.passportUrl) {
+    score += 12;
+    strengths.push("Есть ссылка на паспорт объекта Минстроя в карточке.");
+  } else {
+    score -= 14;
+    risks.push("Нет ссылки на паспорт объекта в данных выгрузки.");
+    questions.push("Попросите у отдела продаж официальный URL паспорта на minstroy.gov.kg.");
+  }
+
+  if (input.hasPassportSnapshot && !input.passportSnapshotHasError) {
+    score += 8;
+    strengths.push("Есть снимок полей паспорта из последней выгрузки.");
+  } else if (input.passportSnapshotHasError) {
+    score -= 6;
+    risks.push("Снимок паспорта в выгрузке содержит ошибку парсинга.");
+    questions.push("Откройте сам паспорт на сайте Минстроя и сверьте поля вручную.");
+  }
+
+  if (input.displayPriceUsdM2 && input.displayPriceKgsM2) {
+    score += 7;
+    strengths.push("Указаны ориентиры цены и в $/м², и в сом/м².");
+    questions.push("Уточните, по какому курсу и на какую дату фиксируется платеж в договоре.");
+  } else if (!input.displayPriceUsdM2 && !input.displayPriceKgsM2) {
+    score -= 8;
+    risks.push("В карточке нет читаемого ориентира цены за м².");
+  } else {
+    score -= 2;
+    risks.push("Цена представлена только в одной валюте; проверяйте эквивалент.");
+  }
+
+  if (input.plannedFinishDisplay) {
+    score += 4;
+    strengths.push("Есть плановая дата сдачи в открытых данных.");
+  } else {
+    score -= 5;
+    risks.push("Не указана плановая дата сдачи.");
+  }
+
+  if (input.scheduleSlipNote) {
+    score -= 7;
+    risks.push("Есть сигнал о переносе плановых сроков между версиями данных.");
+    questions.push("Уточните у застройщика актуальную дату сдачи и основания переноса.");
+  }
+
+  if (input.statusCode === "IN_PROGRESS") {
+    score += 2;
+  } else if (input.statusCode === "PLANNED") {
+    score -= 3;
+    risks.push("Статус в данных: запланирован, объект может быть на ранней стадии.");
+  } else if (input.statusCode === "SUSPENDED") {
+    score -= 12;
+    risks.push("Статус в данных: приостановлен.");
+    questions.push("Попросите официальный комментарий о причинах и сроках возобновления.");
+  }
+
+  if (input.cityId != null) score += 3;
+  if (input.hasCoordinates) score += 4;
+  if (input.subdistrictCount > 0) score += 3;
+
+  score = Math.max(0, Math.min(100, score));
+
+  let confidence: "low" | "medium" | "high" = "low";
+  if (score >= 70) confidence = "high";
+  else if (score >= 45) confidence = "medium";
+
+  let verdict = "Недостаточно подтверждающих данных: проверка обязательна перед сделкой.";
+  if (score >= 75) verdict = "Хорошая базовая прозрачность по открытым источникам, но договор проверяйте отдельно.";
+  else if (score >= 55) verdict = "Есть рабочий минимум данных, однако остаются вопросы к деталям сделки и срокам.";
+
+  if (questions.length === 0) {
+    questions.push("Сверьте стороны договора с карточкой компании и реестром перед подписанием.");
+  }
+
+  return {
+    confidence,
+    score,
+    verdict,
+    strengths: strengths.slice(0, 5),
+    risks: risks.slice(0, 5),
+    questions: questions.slice(0, 5),
+  };
+}
 
 function objectToPageData(
   builder: ElitkaBuilderJson,
@@ -294,6 +406,19 @@ function objectToPageData(
 
   const cityId = typeof d?.city_id === "number" ? Math.round(d.city_id) : undefined;
   const districtId = typeof d?.district_id === "number" ? Math.round(d.district_id) : undefined;
+  const expertAnalytics = buildExpertAnalytics({
+    statusCode: statusRaw,
+    passportUrl: regUrl ?? undefined,
+    hasPassportSnapshot: !!passportSnapshot,
+    passportSnapshotHasError: !!passportSnapshot?.parseError,
+    displayPriceUsdM2: hasDetailUsd ? detailUsd : hasListUsd ? listUsd : undefined,
+    displayPriceKgsM2: hasDetailKgs ? detailKgs : hasListKgs ? listKgs : undefined,
+    plannedFinishDisplay: formatIsoDateRu(finishIso),
+    scheduleSlipNote: scheduleSlipNoteRu(initialFinishIso, finishIso),
+    cityId,
+    hasCoordinates: lat != null && lng != null,
+    subdistrictCount: elitkaFacts?.subdistrictNames?.length ?? 0,
+  });
 
   return {
     projectId: `elitka-${oid}`,
@@ -325,6 +450,7 @@ function objectToPageData(
     displayPriceUsdM2: hasDetailUsd ? detailUsd : hasListUsd ? listUsd : undefined,
     displayPriceKgsM2: hasDetailKgs ? detailKgs : hasListKgs ? listKgs : undefined,
     crossListings,
+    expertAnalytics,
   };
 }
 

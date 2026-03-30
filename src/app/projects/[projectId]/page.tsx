@@ -15,6 +15,7 @@ import ProjectBuyerSnapshot from "@/components/ProjectBuyerSnapshot";
 import ProjectBuilderTrustStrip from "@/components/ProjectBuilderTrustStrip";
 import ProjectCounterpartyHint from "@/components/ProjectCounterpartyHint";
 import ProjectCrossListingsSection from "@/components/ProjectCrossListingsSection";
+import ProjectExpertAnalyticsSection from "@/components/ProjectExpertAnalytics";
 import ProjectLocationContext from "@/components/ProjectLocationContext";
 import ProjectMergeChangelogSnippet from "@/components/ProjectMergeChangelogSnippet";
 import mergeChangelogRaw from "@/data/mergeChangelog.json";
@@ -105,6 +106,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
           listPriceKgsM2={data.listPriceKgsM2}
           elitkaFacts={data.elitkaFacts}
         />
+
+        <ProjectExpertAnalyticsSection analytics={data.expertAnalytics} />
 
         {data.galleryImageUrls.length > 0 && (
           <div className="mb-6 grid grid-cols-2 sm:grid-cols-3 gap-2 rounded-xl overflow-hidden border border-gray-100">
