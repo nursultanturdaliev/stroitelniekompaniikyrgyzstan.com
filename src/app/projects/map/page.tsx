@@ -37,6 +37,9 @@ export default function ProjectsMapPage() {
           <Link href="/projects/" className="btn-secondary text-sm">
             Список и фильтры
           </Link>
+          <Link href="/regions/" className="text-sm text-[var(--steel-blue)] font-medium hover:underline self-center">
+            Заметки по регионам
+          </Link>
           <Link href="/verify/" className="text-sm text-[var(--steel-blue)] font-medium hover:underline self-center">
             Проверка за 5 минут
           </Link>

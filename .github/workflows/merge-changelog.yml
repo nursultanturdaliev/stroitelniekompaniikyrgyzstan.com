@@ -1,0 +1,27 @@
+# Собрать mergeChangelog.json в CI (артефакт), если в репозитории есть предыдущая выгрузка.
+# Перед запуском положите scraped/merged-companies.prev.json (копия прошлого merged-companies.json).
+name: Build merge changelog
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Diff merged JSON
+        if: hashFiles('scraped/merged-companies.prev.json') != '' && hashFiles('scraped/merged-companies.json') != ''
+        run: |
+          python3 scripts/diff-merged-companies.py \
+            --old scraped/merged-companies.prev.json \
+            --new scraped/merged-companies.json \
+            --out src/data/mergeChangelog.json
+
+      - name: Upload mergeChangelog.json
+        if: hashFiles('src/data/mergeChangelog.json') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: mergeChangelog
+          path: src/data/mergeChangelog.json

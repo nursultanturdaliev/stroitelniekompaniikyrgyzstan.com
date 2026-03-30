@@ -10,6 +10,9 @@ import { companies, isRealEstateAgency, isRepairCompany } from "@/data/companies
 import { constructionTypes } from "@/data/constructionTypes";
 import { quickFacts, processSteps } from "@/data/practicalInfo";
 import dailyUpdatesData from "@/data/dailyUpdates.json";
+import mergeChangelogData from "@/data/mergeChangelog.json";
+import MergeChangelogSection from "@/components/MergeChangelogSection";
+import type { MergeChangelogData } from "@/types/mergeChangelog";
 
 export default function Home() {
   const featured = companies.filter((c) => !isRealEstateAgency(c) && !isRepairCompany(c)).slice(0, 6);
@@ -87,6 +90,8 @@ export default function Home() {
       </section>
 
       <DailyUpdatesFeed updatedAt={dailyUpdatesData.updatedAt} items={dailyUpdatesData.items} />
+
+      <MergeChangelogSection data={mergeChangelogData as MergeChangelogData} compact />
 
       <section className="section-padding bg-[var(--soft-white)]">
         <div className="container-custom">

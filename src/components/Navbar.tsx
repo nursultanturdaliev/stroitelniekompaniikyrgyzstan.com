@@ -6,6 +6,7 @@ import Link from "next/link";
 const navLinks = [
   { href: "/blacklist/", label: "Чёрный список" },
   { href: "/projects/", label: "Новостройки" },
+  { href: "/regions/", label: "Регионы" },
   { href: "/companies/", label: "Компании" },
   { href: "/agencies/", label: "Агентства" },
   { href: "/remont/", label: "Ремонт" },
@@ -13,6 +14,8 @@ const navLinks = [
   { href: "/negotiator/", label: "AI-переговорщик" },
   { href: "/guide/", label: "Гид" },
   { href: "/glossary/", label: "Словарь" },
+  { href: "/updates/", label: "Изменения" },
+  { href: "/corrections/", label: "Правка" },
   { href: "/verify/", label: "Проверка" },
   { href: "/pricing/", label: "Цены" },
   { href: "/faq/", label: "FAQ" },

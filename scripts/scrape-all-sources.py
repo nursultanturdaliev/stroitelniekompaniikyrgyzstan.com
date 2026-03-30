@@ -8,6 +8,9 @@
 
 Выход: scraped/merged-companies.json (по умолчанию в корне проекта)
 
+Чтобы сгенерировать diff для сайта: скопируйте предыдущую выгрузку в scraped/merged-companies.prev.json,
+затем npm run merge:diff (скрипт scripts/diff-merged-companies.py → src/data/mergeChangelog.json).
+
   pip install -r scripts/requirements-scrape.txt
   python3 scripts/scrape-all-sources.py
   python3 scripts/scrape-all-sources.py --skip-house   # только Элитка + 2GIS

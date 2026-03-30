@@ -87,6 +87,9 @@ export default function GuidePage() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-4">
+          <Link href="/regions/" className="btn-secondary">
+            Регионы
+          </Link>
           <Link href="/verify/" className="btn-primary">
             Проверка за 5 минут
           </Link>

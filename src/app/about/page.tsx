@@ -33,6 +33,9 @@ export default function AboutPage() {
           <Link href="/guide/" className="btn-secondary">
             Гид по выбору
           </Link>
+          <Link href="/corrections/" className="btn-secondary">
+            Правка данных
+          </Link>
         </div>
       </div>
     </article>

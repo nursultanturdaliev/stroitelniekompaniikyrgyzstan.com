@@ -142,6 +142,9 @@ export default function ProjectsIndexClient({
           <Link href="/verify/" className="btn-secondary text-sm">
             Проверка за 5 минут
           </Link>
+          <Link href="/regions/" className="text-sm text-[var(--steel-blue)] font-medium hover:underline self-center">
+            Регионы
+          </Link>
           <Link href="/guide/" className="text-sm text-[var(--steel-blue)] font-medium hover:underline self-center">
             Гид по реестрам
           </Link>
