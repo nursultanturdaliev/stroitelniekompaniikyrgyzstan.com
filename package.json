@@ -14,7 +14,8 @@
     "scrape:sources": "python3 scripts/scrape-all-sources.py --out scraped/merged-companies.json",
     "scrape:passports": "python3 scripts/scrape-all-sources.py --passport-only --merged-in scraped/merged-companies.json --out scraped/merged-companies.json",
     "merge:diff": "python3 scripts/diff-merged-companies.py --old scraped/merged-companies.prev.json --new scraped/merged-companies.json --out src/data/mergeChangelog.json",
-    "data:stats": "node scripts/generate-data-quality-stats.mjs"
+    "data:stats": "node scripts/generate-data-quality-stats.mjs",
+    "ai:opinions": "node scripts/generate-project-ai-opinions.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",

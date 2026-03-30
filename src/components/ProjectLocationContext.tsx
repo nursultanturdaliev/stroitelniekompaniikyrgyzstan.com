@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { getBishkekSubdistrictExtras, getLocationBuyerContext } from "@/data/locationBuyerContext";
+import type { ProjectAiOpinion } from "@/types/projectAiOpinion";
 
 export default function ProjectLocationContext({
   cityId,
   subdistrictNames,
   address,
+  aiLocationOpinion,
 }: {
   cityId?: number;
   subdistrictNames: string[];
   address: string;
+  aiLocationOpinion?: ProjectAiOpinion["locationOpinion"];
 }) {
   const ctx = getLocationBuyerContext(cityId);
   const extras = cityId === 1 ? getBishkekSubdistrictExtras(subdistrictNames) : [];
@@ -64,6 +67,38 @@ export default function ProjectLocationContext({
             ))}
           </ul>
         </div>
+        {aiLocationOpinion && (
+          <div className="rounded-lg border border-violet-100 bg-violet-50/60 p-3">
+            <p className="text-xs font-semibold text-[var(--charcoal)] mb-2">AI-мнение: место и среда</p>
+            <p className="text-sm text-[var(--slate-blue)] mb-2">{aiLocationOpinion.summary}</p>
+            <div className="grid md:grid-cols-3 gap-3 text-xs text-[var(--slate-blue)]">
+              <div>
+                <p className="font-medium text-[var(--charcoal)] mb-1">Воздух и климат</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  {aiLocationOpinion.airAndClimate.map((x) => (
+                    <li key={x}>{x}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium text-[var(--charcoal)] mb-1">Транспорт и шум</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  {aiLocationOpinion.transportAndNoise.map((x) => (
+                    <li key={x}>{x}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="font-medium text-[var(--charcoal)] mb-1">Проверить лично</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  {aiLocationOpinion.localChecks.map((x) => (
+                    <li key={x}>{x}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {ctx.links && ctx.links.length > 0 && (

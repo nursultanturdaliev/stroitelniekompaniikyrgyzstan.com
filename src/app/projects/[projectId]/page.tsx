@@ -15,11 +15,14 @@ import ProjectBuyerSnapshot from "@/components/ProjectBuyerSnapshot";
 import ProjectBuilderTrustStrip from "@/components/ProjectBuilderTrustStrip";
 import ProjectCounterpartyHint from "@/components/ProjectCounterpartyHint";
 import ProjectCrossListingsSection from "@/components/ProjectCrossListingsSection";
+import ProjectAiOpinionSection from "@/components/ProjectAiOpinionSection";
 import ProjectExpertAnalyticsSection from "@/components/ProjectExpertAnalytics";
 import ProjectLocationContext from "@/components/ProjectLocationContext";
 import ProjectMergeChangelogSnippet from "@/components/ProjectMergeChangelogSnippet";
+import aiOpinionsRaw from "@/data/projectAiOpinions.json";
 import mergeChangelogRaw from "@/data/mergeChangelog.json";
 import { buildProjectBuyerHints } from "@/lib/projectBuyerHints";
+import type { ProjectAiOpinionMap } from "@/types/projectAiOpinion";
 import type { MergeChangelogData } from "@/types/mergeChangelog";
 
 const siteUrl = "https://stroitelniekompaniikyrgyzstan.com";
@@ -52,6 +55,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
 
   const builderCompany = getCompanyBySlug(data.builderSlug);
   const mergeChangelog = mergeChangelogRaw as MergeChangelogData;
+  const aiOpinions = aiOpinionsRaw as ProjectAiOpinionMap;
+  const aiOpinion = aiOpinions[data.projectId];
   const buyerHints = buildProjectBuyerHints({
     passportUrl: data.passportUrl,
     statusCode: data.statusCode,
@@ -106,6 +111,8 @@ export default async function ElitkaProjectPage({ params }: Props) {
           listPriceKgsM2={data.listPriceKgsM2}
           elitkaFacts={data.elitkaFacts}
         />
+
+        <ProjectAiOpinionSection opinion={aiOpinion} objectId={data.elitkaObjectId} />
 
         <ProjectExpertAnalyticsSection analytics={data.expertAnalytics} />
 
@@ -181,6 +188,7 @@ export default async function ElitkaProjectPage({ params }: Props) {
           cityId={data.cityId}
           subdistrictNames={data.elitkaFacts?.subdistrictNames?.filter(Boolean) ?? []}
           address={data.address}
+          aiLocationOpinion={aiOpinion?.locationOpinion}
         />
 
         {(data.lat != null && data.lng != null) || mapHref ? (
