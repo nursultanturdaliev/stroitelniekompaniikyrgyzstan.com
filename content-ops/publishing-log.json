@@ -1,8 +1,14 @@
 {
-  "lastRunAt": "2026-06-21T06:35:37.779Z",
+  "lastRunAt": "2026-06-22T06:48:12.904Z",
   "totalPublished": 0,
   "items": [],
   "runs": [
+    {
+      "date": "2026-06-22",
+      "executedAt": "2026-06-22T06:48:12.904Z",
+      "publishedCount": 0,
+      "queuedCount": 5
+    },
     {
       "date": "2026-06-21",
       "executedAt": "2026-06-21T06:35:37.779Z",
