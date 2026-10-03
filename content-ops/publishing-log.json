@@ -1,8 +1,14 @@
 {
-  "lastRunAt": "2026-10-02T10:50:25.417Z",
+  "lastRunAt": "2026-10-03T10:10:28.249Z",
   "totalPublished": 0,
   "items": [],
   "runs": [
+    {
+      "date": "2026-10-03",
+      "executedAt": "2026-10-03T10:10:28.249Z",
+      "publishedCount": 0,
+      "queuedCount": 5
+    },
     {
       "date": "2026-10-02",
       "executedAt": "2026-10-02T10:50:25.417Z",
@@ -714,12 +720,6 @@
     {
       "date": "2026-06-06",
       "executedAt": "2026-06-06T06:12:05.613Z",
-      "publishedCount": 0,
-      "queuedCount": 5
-    },
-    {
-      "date": "2026-06-05",
-      "executedAt": "2026-06-05T06:30:47.779Z",
       "publishedCount": 0,
       "queuedCount": 5
     }
